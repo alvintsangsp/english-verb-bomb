@@ -164,25 +164,25 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-2 md:p-8 flex flex-col">
+      <div className="max-w-4xl mx-auto w-full flex flex-col h-screen max-h-screen">
+        {/* Compact Header */}
+        <div className="flex items-center justify-between mb-2 md:mb-4 shrink-0">
           <Button
             onClick={onBack}
             variant="outline"
-            size="lg"
-            className="border-4 border-border hover:border-primary font-bold"
+            size="sm"
+            className="border-2 md:border-4 border-border hover:border-primary font-bold p-2"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
           </Button>
 
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="flex items-center gap-0.5 md:gap-1">
               {[...Array(3)].map((_, i) => (
                 <Heart
                   key={i}
-                  className={`w-8 h-8 ${
+                  className={`w-5 h-5 md:w-8 md:h-8 ${
                     i < lives
                       ? "text-destructive fill-destructive"
                       : "text-muted-foreground"
@@ -190,55 +190,55 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
                 />
               ))}
             </div>
-            <div className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
-              <Star className="w-6 h-6 text-secondary-foreground fill-secondary-foreground" />
-              <span className="text-xl font-black text-secondary-foreground">
+            <div className="flex items-center gap-1 md:gap-2 bg-secondary px-2 md:px-4 py-1 md:py-2 rounded-full">
+              <Star className="w-4 h-4 md:w-6 md:h-6 text-secondary-foreground fill-secondary-foreground" />
+              <span className="text-base md:text-xl font-black text-secondary-foreground">
                 {score}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="mb-8">
-          <div className="h-4 bg-muted rounded-full overflow-hidden border-4 border-border">
+        {/* Compact Progress Bar */}
+        <div className="mb-2 md:mb-6 shrink-0">
+          <div className="h-2 md:h-4 bg-muted rounded-full overflow-hidden border-2 md:border-4 border-border">
             <div
               className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
-          <p className="text-center mt-2 text-sm font-bold text-muted-foreground">
+          <p className="text-center mt-1 text-xs md:text-sm font-bold text-muted-foreground">
             Question {currentQuestion + 1} of {questions.length}
           </p>
         </div>
 
-        {/* Question Card */}
-        <Card className="mb-6 p-6 md:p-8 border-4 border-border animate-bounce-in">
+        {/* Compact Question Card */}
+        <Card className="mb-2 md:mb-4 p-3 md:p-6 border-2 md:border-4 border-border animate-bounce-in shrink-0">
           <div className="text-center">
-            <div className="mb-6">
-              <Sparkles className="w-12 h-12 mx-auto text-secondary mb-4" />
+            <div className="mb-2 md:mb-4">
+              <Sparkles className="w-6 h-6 md:w-10 md:h-10 mx-auto text-secondary mb-2" />
               {currentQ.type === "gap-fill" ? (
-                <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
+                <p className="text-lg md:text-3xl font-black text-foreground leading-snug md:leading-relaxed">
                   {currentQ.sentence.split("___")[0]}
-                  <span className="inline-block min-w-[120px] border-b-4 border-primary mx-2 text-primary">
+                  <span className="inline-block min-w-[80px] md:min-w-[120px] border-b-2 md:border-b-4 border-primary mx-1 md:mx-2 text-primary">
                     {gapAnswer || "___"}
                   </span>
                   {currentQ.sentence.split("___")[1]}
                 </p>
               ) : currentQ.type === "sentence-reorder" ? (
                 <div>
-                  <p className="text-lg md:text-xl font-bold text-muted-foreground mb-4">
+                  <p className="text-sm md:text-lg font-bold text-muted-foreground mb-2 md:mb-3">
                     Put the words in the correct order:
                   </p>
                   {selectedWords.length > 0 && (
-                    <div className="flex flex-wrap gap-2 justify-center mb-4 min-h-[60px] p-4 bg-muted/30 rounded-lg">
+                    <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center mb-2 md:mb-3 min-h-[40px] md:min-h-[60px] p-2 md:p-4 bg-muted/30 rounded-lg">
                       {selectedWords.map((word, index) => (
                         <Button
                           key={`selected-${index}`}
                           onClick={() => handleRemoveWord(index)}
                           variant="secondary"
-                          size="lg"
-                          className="text-xl md:text-2xl font-black border-4 border-secondary"
+                          size="sm"
+                          className="text-base md:text-xl font-black border-2 md:border-4 border-secondary px-2 md:px-4 py-1 md:py-2"
                         >
                           {word}
                         </Button>
@@ -247,7 +247,7 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
                   )}
                 </div>
               ) : (
-                <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
+                <p className="text-lg md:text-3xl font-black text-foreground leading-snug md:leading-relaxed">
                   {currentQ.sentence}
                 </p>
               )}
@@ -255,97 +255,99 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
           </div>
         </Card>
 
-        {/* Answer Options */}
-        {currentQ.type === "multiple-choice" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currentQ.options.map((option, index) => (
-              <Button
-                key={index}
-                id={`answer-${index}`}
-                onClick={() => handleAnswerClick(index)}
-                disabled={showFeedback}
-                size="lg"
-                className={`h-auto py-6 text-xl md:text-2xl font-black border-4 transition-all duration-300 ${
-                  showFeedback
-                    ? index === currentQ.correctAnswer
-                      ? "bg-success border-success text-success-foreground hover:bg-success"
-                      : selectedAnswer === index
-                      ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
-                      : "border-border"
-                    : "border-border hover:border-primary hover:scale-105"
-                }`}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
-        )}
-
-        {currentQ.type === "gap-fill" && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {/* Compact Answer Options */}
+        <div className="flex-1 overflow-y-auto">
+          {currentQ.type === "multiple-choice" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
               {currentQ.options.map((option, index) => (
                 <Button
                   key={index}
-                  onClick={() => {
-                    setGapAnswer(option);
-                    if (!showFeedback) {
-                      const button = document.getElementById(`gap-${index}`);
-                      if (button) button.classList.add("animate-bounce-in");
-                    }
-                  }}
+                  id={`answer-${index}`}
+                  onClick={() => handleAnswerClick(index)}
                   disabled={showFeedback}
-                  id={`gap-${index}`}
-                  size="lg"
-                  variant={gapAnswer === option ? "default" : "outline"}
-                  className={`py-6 text-xl md:text-2xl font-black border-4 transition-all duration-300 ${
-                    showFeedback && option === currentQ.correctAnswer
-                      ? "bg-success border-success text-success-foreground"
-                      : ""
+                  size="sm"
+                  className={`h-auto py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 transition-all duration-300 ${
+                    showFeedback
+                      ? index === currentQ.correctAnswer
+                        ? "bg-success border-success text-success-foreground hover:bg-success"
+                        : selectedAnswer === index
+                        ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
+                        : "border-border"
+                      : "border-border hover:border-primary hover:scale-105"
                   }`}
                 >
                   {option}
                 </Button>
               ))}
             </div>
-            <Button
-              onClick={handleGapFillSubmit}
-              disabled={!gapAnswer || showFeedback}
-              size="lg"
-              className="w-full py-6 text-xl md:text-2xl font-black border-4 border-primary"
-            >
-              Check Answer
-            </Button>
-          </div>
-        )}
+          )}
 
-        {currentQ.type === "sentence-reorder" && (
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-3 justify-center">
-              {currentQ.options
-                .filter((word) => !selectedWords.includes(word))
-                .map((option, index) => (
+          {currentQ.type === "gap-fill" && (
+            <div className="space-y-2 md:space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+                {currentQ.options.map((option, index) => (
                   <Button
                     key={index}
-                    onClick={() => handleWordClick(option)}
+                    onClick={() => {
+                      setGapAnswer(option);
+                      if (!showFeedback) {
+                        const button = document.getElementById(`gap-${index}`);
+                        if (button) button.classList.add("animate-bounce-in");
+                      }
+                    }}
                     disabled={showFeedback}
-                    size="lg"
-                    className="py-6 text-xl md:text-2xl font-black border-4 border-border hover:border-primary hover:scale-105"
+                    id={`gap-${index}`}
+                    size="sm"
+                    variant={gapAnswer === option ? "default" : "outline"}
+                    className={`py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 transition-all duration-300 ${
+                      showFeedback && option === currentQ.correctAnswer
+                        ? "bg-success border-success text-success-foreground"
+                        : ""
+                    }`}
                   >
                     {option}
                   </Button>
                 ))}
+              </div>
+              <Button
+                onClick={handleGapFillSubmit}
+                disabled={!gapAnswer || showFeedback}
+                size="sm"
+                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+              >
+                Check Answer
+              </Button>
             </div>
-            <Button
-              onClick={handleReorderSubmit}
-              disabled={selectedWords.length !== currentQ.options.length || showFeedback}
-              size="lg"
-              className="w-full py-6 text-xl md:text-2xl font-black border-4 border-primary"
-            >
-              Check Answer
-            </Button>
-          </div>
-        )}
+          )}
+
+          {currentQ.type === "sentence-reorder" && (
+            <div className="space-y-2 md:space-y-4">
+              <div className="flex flex-wrap gap-1.5 md:gap-3 justify-center">
+                {currentQ.options
+                  .filter((word) => !selectedWords.includes(word))
+                  .map((option, index) => (
+                    <Button
+                      key={index}
+                      onClick={() => handleWordClick(option)}
+                      disabled={showFeedback}
+                      size="sm"
+                      className="py-2 md:py-6 px-3 md:px-6 text-base md:text-2xl font-black border-2 md:border-4 border-border hover:border-primary hover:scale-105"
+                    >
+                      {option}
+                    </Button>
+                  ))}
+              </div>
+              <Button
+                onClick={handleReorderSubmit}
+                disabled={selectedWords.length !== currentQ.options.length || showFeedback}
+                size="sm"
+                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+              >
+                Check Answer
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
