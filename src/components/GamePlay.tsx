@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Heart, Star, Sparkles } from "lucide-react";
@@ -6,10 +6,12 @@ import { toast } from "sonner";
 
 interface Question {
   id: number;
+  type: "multiple-choice" | "gap-fill" | "sentence-reorder";
   sentence: string;
   options: string[];
-  correctAnswer: number;
+  correctAnswer: number | string;
   explanation: string;
+  correctOrder?: string[]; // for sentence reordering
 }
 
 interface GamePlayProps {
@@ -24,11 +26,14 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
   const [isCorrect, setIsCorrect] = useState(false);
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [gapAnswer, setGapAnswer] = useState("");
 
   // Sample questions - in production, these would come from your backend
   const questions: Question[] = [
     {
       id: 1,
+      type: "multiple-choice",
       sentence: "She ___ to school every day.",
       options: ["go", "goes", "going", "went"],
       correctAnswer: 1,
@@ -36,17 +41,20 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
     },
     {
       id: 2,
+      type: "gap-fill",
       sentence: "They ___ football yesterday.",
       options: ["play", "plays", "played", "playing"],
-      correctAnswer: 2,
+      correctAnswer: "played",
       explanation: "Use 'played' for past simple with 'yesterday'!",
     },
     {
       id: 3,
-      sentence: "I ___ my homework right now.",
-      options: ["do", "does", "doing", "am doing"],
-      correctAnswer: 3,
-      explanation: "Use 'am doing' for present continuous!",
+      type: "sentence-reorder",
+      sentence: "I am doing my homework right now.",
+      options: ["homework", "am", "I", "my", "doing", "right", "now"],
+      correctAnswer: 0,
+      correctOrder: ["I", "am", "doing", "my", "homework", "right", "now"],
+      explanation: "Great job! Remember: Subject + am/is/are + verb-ing for present continuous!",
     },
   ];
 
@@ -67,7 +75,6 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
         description: currentQ.explanation,
       });
       
-      // Play confetti animation
       const button = document.getElementById(`answer-${answerIndex}`);
       if (button) {
         button.classList.add("animate-confetti");
@@ -78,21 +85,78 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
         description: currentQ.explanation,
       });
       
-      // Play shake animation
       const button = document.getElementById(`answer-${answerIndex}`);
       if (button) {
         button.classList.add("animate-shake");
       }
     }
 
-    // Move to next question after delay
+    moveToNextQuestion(correct);
+  };
+
+  const handleGapFillSubmit = () => {
+    if (showFeedback || !gapAnswer.trim()) return;
+
+    const correct = gapAnswer.toLowerCase().trim() === (currentQ.correctAnswer as string).toLowerCase();
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      setScore(score + 1);
+      toast.success("🎉 Correct!", {
+        description: currentQ.explanation,
+      });
+    } else {
+      setLives(lives - 1);
+      toast.error("❌ Not quite!", {
+        description: currentQ.explanation,
+      });
+    }
+
+    moveToNextQuestion(correct);
+  };
+
+  const handleWordClick = (word: string) => {
+    if (showFeedback) return;
+    setSelectedWords([...selectedWords, word]);
+  };
+
+  const handleRemoveWord = (index: number) => {
+    if (showFeedback) return;
+    setSelectedWords(selectedWords.filter((_, i) => i !== index));
+  };
+
+  const handleReorderSubmit = () => {
+    if (showFeedback || selectedWords.length !== currentQ.options.length) return;
+
+    const correct = JSON.stringify(selectedWords) === JSON.stringify(currentQ.correctOrder);
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      setScore(score + 1);
+      toast.success("🎉 Correct!", {
+        description: currentQ.explanation,
+      });
+    } else {
+      setLives(lives - 1);
+      toast.error("❌ Not quite!", {
+        description: `The correct order is: ${currentQ.correctOrder?.join(" ")}`,
+      });
+    }
+
+    moveToNextQuestion(correct);
+  };
+
+  const moveToNextQuestion = (correct: boolean) => {
     setTimeout(() => {
       if (currentQuestion < questions.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
         setSelectedAnswer(null);
         setShowFeedback(false);
+        setSelectedWords([]);
+        setGapAnswer("");
       } else {
-        // Game over - show results
         toast.success(`🏆 Game Complete! Score: ${score + (correct ? 1 : 0)}/${questions.length}`);
         setTimeout(() => onBack(), 2000);
       }
@@ -153,36 +217,135 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
           <div className="text-center">
             <div className="mb-6">
               <Sparkles className="w-12 h-12 mx-auto text-secondary mb-4" />
-              <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
-                {currentQ.sentence}
-              </p>
+              {currentQ.type === "gap-fill" ? (
+                <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
+                  {currentQ.sentence.split("___")[0]}
+                  <span className="inline-block min-w-[120px] border-b-4 border-primary mx-2 text-primary">
+                    {gapAnswer || "___"}
+                  </span>
+                  {currentQ.sentence.split("___")[1]}
+                </p>
+              ) : currentQ.type === "sentence-reorder" ? (
+                <div>
+                  <p className="text-lg md:text-xl font-bold text-muted-foreground mb-4">
+                    Put the words in the correct order:
+                  </p>
+                  {selectedWords.length > 0 && (
+                    <div className="flex flex-wrap gap-2 justify-center mb-4 min-h-[60px] p-4 bg-muted/30 rounded-lg">
+                      {selectedWords.map((word, index) => (
+                        <Button
+                          key={`selected-${index}`}
+                          onClick={() => handleRemoveWord(index)}
+                          variant="secondary"
+                          size="lg"
+                          className="text-xl md:text-2xl font-black border-4 border-secondary"
+                        >
+                          {word}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
+                  {currentQ.sentence}
+                </p>
+              )}
             </div>
           </div>
         </Card>
 
         {/* Answer Options */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {currentQ.options.map((option, index) => (
+        {currentQ.type === "multiple-choice" && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {currentQ.options.map((option, index) => (
+              <Button
+                key={index}
+                id={`answer-${index}`}
+                onClick={() => handleAnswerClick(index)}
+                disabled={showFeedback}
+                size="lg"
+                className={`h-auto py-6 text-xl md:text-2xl font-black border-4 transition-all duration-300 ${
+                  showFeedback
+                    ? index === currentQ.correctAnswer
+                      ? "bg-success border-success text-success-foreground hover:bg-success"
+                      : selectedAnswer === index
+                      ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
+                      : "border-border"
+                    : "border-border hover:border-primary hover:scale-105"
+                }`}
+              >
+                {option}
+              </Button>
+            ))}
+          </div>
+        )}
+
+        {currentQ.type === "gap-fill" && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {currentQ.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => {
+                    setGapAnswer(option);
+                    if (!showFeedback) {
+                      const button = document.getElementById(`gap-${index}`);
+                      if (button) button.classList.add("animate-bounce-in");
+                    }
+                  }}
+                  disabled={showFeedback}
+                  id={`gap-${index}`}
+                  size="lg"
+                  variant={gapAnswer === option ? "default" : "outline"}
+                  className={`py-6 text-xl md:text-2xl font-black border-4 transition-all duration-300 ${
+                    showFeedback && option === currentQ.correctAnswer
+                      ? "bg-success border-success text-success-foreground"
+                      : ""
+                  }`}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
             <Button
-              key={index}
-              id={`answer-${index}`}
-              onClick={() => handleAnswerClick(index)}
-              disabled={showFeedback}
+              onClick={handleGapFillSubmit}
+              disabled={!gapAnswer || showFeedback}
               size="lg"
-              className={`h-auto py-6 text-xl md:text-2xl font-black border-4 transition-all duration-300 ${
-                showFeedback
-                  ? index === currentQ.correctAnswer
-                    ? "bg-success border-success text-success-foreground hover:bg-success"
-                    : selectedAnswer === index
-                    ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
-                    : "border-border"
-                  : "border-border hover:border-primary hover:scale-105"
-              }`}
+              className="w-full py-6 text-xl md:text-2xl font-black border-4 border-primary"
             >
-              {option}
+              Check Answer
             </Button>
-          ))}
-        </div>
+          </div>
+        )}
+
+        {currentQ.type === "sentence-reorder" && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-3 justify-center">
+              {currentQ.options
+                .filter((word) => !selectedWords.includes(word))
+                .map((option, index) => (
+                  <Button
+                    key={index}
+                    onClick={() => handleWordClick(option)}
+                    disabled={showFeedback}
+                    size="lg"
+                    className="py-6 text-xl md:text-2xl font-black border-4 border-border hover:border-primary hover:scale-105"
+                  >
+                    {option}
+                  </Button>
+                ))}
+            </div>
+            <Button
+              onClick={handleReorderSubmit}
+              disabled={selectedWords.length !== currentQ.options.length || showFeedback}
+              size="lg"
+              className="w-full py-6 text-xl md:text-2xl font-black border-4 border-primary"
+            >
+              Check Answer
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
