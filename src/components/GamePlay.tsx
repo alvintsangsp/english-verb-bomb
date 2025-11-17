@@ -3,23 +3,15 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Heart, Star, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-
-interface Question {
-  id: number;
-  type: "multiple-choice" | "gap-fill" | "sentence-reorder";
-  sentence: string;
-  options: string[];
-  correctAnswer: number | string;
-  explanation: string;
-  correctOrder?: string[]; // for sentence reordering
-}
+import { getLevelById, Question } from "@/data/levels";
+import { useProgress } from "@/hooks/useProgress";
 
 interface GamePlayProps {
-  mode: string;
+  levelId: number;
   onBack: () => void;
 }
 
-const GamePlay = ({ mode, onBack }: GamePlayProps) => {
+const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -28,35 +20,19 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [gapAnswer, setGapAnswer] = useState("");
+  const [matchingPairs, setMatchingPairs] = useState<{left: string | null, right: string | null}[]>([]);
+  const { updateLevelProgress } = useProgress();
 
-  // Sample questions - in production, these would come from your backend
-  const questions: Question[] = [
-    {
-      id: 1,
-      type: "multiple-choice",
-      sentence: "She ___ to school every day.",
-      options: ["go", "goes", "going", "went"],
-      correctAnswer: 1,
-      explanation: "Use 'goes' with 'she' in present simple!",
-    },
-    {
-      id: 2,
-      type: "gap-fill",
-      sentence: "They ___ football yesterday.",
-      options: ["play", "plays", "played", "playing"],
-      correctAnswer: "played",
-      explanation: "Use 'played' for past simple with 'yesterday'!",
-    },
-    {
-      id: 3,
-      type: "sentence-reorder",
-      sentence: "I am doing my homework right now.",
-      options: ["homework", "am", "I", "my", "doing", "right", "now"],
-      correctAnswer: 0,
-      correctOrder: ["I", "am", "doing", "my", "homework", "right", "now"],
-      explanation: "Great job! Remember: Subject + am/is/are + verb-ing for present continuous!",
-    },
-  ];
+  const level = getLevelById(levelId);
+  if (!level) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-xl">Level not found</p>
+      </div>
+    );
+  }
+
+  const questions = level.questions;
 
   const currentQ = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
@@ -148,6 +124,82 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
     moveToNextQuestion(correct);
   };
 
+  const handleTrueFalseClick = (answerIndex: number) => {
+    if (showFeedback) return;
+
+    setSelectedAnswer(answerIndex);
+    const correct = answerIndex === currentQ.correctAnswer;
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      setScore(score + 1);
+      toast.success("🎉 Correct!", {
+        description: currentQ.explanation,
+      });
+    } else {
+      setLives(lives - 1);
+      toast.error("❌ Not quite!", {
+        description: currentQ.explanation,
+      });
+    }
+
+    moveToNextQuestion(correct);
+  };
+
+  const handleMatchingSelect = (item: string, side: "left" | "right") => {
+    if (showFeedback) return;
+
+    const newPairs = [...matchingPairs];
+    const emptyPairIndex = newPairs.findIndex((pair) => 
+      side === "left" ? pair.left === null : pair.right === null
+    );
+
+    if (emptyPairIndex !== -1) {
+      if (side === "left") {
+        newPairs[emptyPairIndex].left = item;
+      } else {
+        newPairs[emptyPairIndex].right = item;
+      }
+    } else {
+      if (side === "left") {
+        newPairs.push({ left: item, right: null });
+      } else {
+        newPairs.push({ left: null, right: item });
+      }
+    }
+
+    setMatchingPairs(newPairs);
+  };
+
+  const handleMatchingSubmit = () => {
+    if (showFeedback || matchingPairs.length < (currentQ.pairs?.length || 0)) return;
+
+    const userAnswers = matchingPairs
+      .filter((pair) => pair.left && pair.right)
+      .map((pair) => `${pair.left}-${pair.right}`);
+    
+    const correctAnswers = currentQ.correctAnswer as string[];
+    const correct = JSON.stringify(userAnswers.sort()) === JSON.stringify(correctAnswers.sort());
+
+    setIsCorrect(correct);
+    setShowFeedback(true);
+
+    if (correct) {
+      setScore(score + 1);
+      toast.success("🎉 Correct!", {
+        description: currentQ.explanation,
+      });
+    } else {
+      setLives(lives - 1);
+      toast.error("❌ Not quite!", {
+        description: currentQ.explanation,
+      });
+    }
+
+    moveToNextQuestion(correct);
+  };
+
   const moveToNextQuestion = (correct: boolean) => {
     setTimeout(() => {
       if (currentQuestion < questions.length - 1) {
@@ -156,8 +208,11 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
         setShowFeedback(false);
         setSelectedWords([]);
         setGapAnswer("");
+        setMatchingPairs([]);
       } else {
-        toast.success(`🏆 Game Complete! Score: ${score + (correct ? 1 : 0)}/${questions.length}`);
+        const finalScore = score + (correct ? 1 : 0);
+        updateLevelProgress(levelId, finalScore, questions.length);
+        toast.success(`🏆 Level Complete! Score: ${finalScore}/${questions.length}`);
         setTimeout(() => onBack(), 2000);
       }
     }, 2000);
@@ -256,7 +311,7 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
         </Card>
 
         {/* Compact Answer Options */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pb-4">
           {currentQ.type === "multiple-choice" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
               {currentQ.options.map((option, index) => (
@@ -344,6 +399,85 @@ const GamePlay = ({ mode, onBack }: GamePlayProps) => {
                 className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
               >
                 Check Answer
+              </Button>
+            </div>
+          )}
+
+          {currentQ.type === "true-false" && (
+            <div className="grid grid-cols-2 gap-3 md:gap-4">
+              {currentQ.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleTrueFalseClick(index)}
+                  disabled={showFeedback}
+                  size="sm"
+                  className={`h-auto py-4 md:py-8 text-xl md:text-3xl font-black border-2 md:border-4 transition-all duration-300 ${
+                    showFeedback
+                      ? index === currentQ.correctAnswer
+                        ? "bg-success border-success text-success-foreground hover:bg-success"
+                        : selectedAnswer === index
+                        ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
+                        : "border-border"
+                      : "border-border hover:border-primary hover:scale-105"
+                  }`}
+                >
+                  {option}
+                </Button>
+              ))}
+            </div>
+          )}
+
+          {currentQ.type === "matching" && (
+            <div className="space-y-3 md:space-y-4">
+              <div className="grid grid-cols-2 gap-3 md:gap-4">
+                <div className="space-y-2">
+                  <p className="text-sm md:text-base font-bold text-center text-muted-foreground">Match Left</p>
+                  {currentQ.pairs?.map((pair, index) => (
+                    <Button
+                      key={`left-${index}`}
+                      onClick={() => handleMatchingSelect(pair.left, "left")}
+                      disabled={showFeedback || matchingPairs.some(p => p.left === pair.left)}
+                      size="sm"
+                      variant={matchingPairs.some(p => p.left === pair.left) ? "secondary" : "outline"}
+                      className="w-full py-3 md:py-4 text-sm md:text-lg font-black border-2 md:border-4"
+                    >
+                      {pair.left}
+                    </Button>
+                  ))}
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm md:text-base font-bold text-center text-muted-foreground">Match Right</p>
+                  {currentQ.pairs?.map((pair, index) => (
+                    <Button
+                      key={`right-${index}`}
+                      onClick={() => handleMatchingSelect(pair.right, "right")}
+                      disabled={showFeedback || matchingPairs.some(p => p.right === pair.right)}
+                      size="sm"
+                      variant={matchingPairs.some(p => p.right === pair.right) ? "secondary" : "outline"}
+                      className="w-full py-3 md:py-4 text-sm md:text-lg font-black border-2 md:border-4"
+                    >
+                      {pair.right}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+              {matchingPairs.length > 0 && (
+                <div className="bg-muted/30 p-3 md:p-4 rounded-lg">
+                  <p className="text-xs md:text-sm font-bold text-muted-foreground mb-2">Your matches:</p>
+                  {matchingPairs.map((pair, index) => (
+                    <div key={index} className="text-sm md:text-base font-semibold">
+                      {pair.left} → {pair.right}
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button
+                onClick={handleMatchingSubmit}
+                disabled={matchingPairs.length < (currentQ.pairs?.length || 0) || showFeedback}
+                size="sm"
+                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+              >
+                Check Matches
               </Button>
             </div>
           )}
