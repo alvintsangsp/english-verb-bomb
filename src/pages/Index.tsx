@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Star, Sparkles, Zap, Trophy } from "lucide-react";
+import { Star, Sparkles, Zap, Trophy, BookOpen } from "lucide-react";
 import GameMode from "@/components/GameMode";
 import GamePlay from "@/components/GamePlay";
+import ReviewMode from "@/components/ReviewMode";
+import { useProgress } from "@/hooks/useProgress";
 
 const Index = () => {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
   const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
+  const [showReview, setShowReview] = useState(false);
+  const { getIncorrectAnswers } = useProgress();
+
+  const incorrectAnswersCount = getIncorrectAnswers().length;
 
   const gameModes = [
     {
@@ -47,6 +53,10 @@ const Index = () => {
     },
   ];
 
+  if (showReview) {
+    return <ReviewMode onBack={() => setShowReview(false)} />;
+  }
+
   if (selectedLevel) {
     return (
       <GamePlay
@@ -85,6 +95,35 @@ const Index = () => {
             Master English verbs through fun games! 🎮
           </p>
         </div>
+
+        {/* Review Mode Card */}
+        {incorrectAnswersCount > 0 && (
+          <Card
+            className="mb-6 overflow-hidden border-4 border-primary hover:scale-105 transition-all duration-300 cursor-pointer animate-bounce-in"
+            onClick={() => setShowReview(true)}
+          >
+            <div className="bg-gradient-to-r from-primary to-secondary p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <BookOpen className="w-12 h-12 text-white" />
+                  <div>
+                    <h2 className="text-2xl md:text-3xl font-black text-white mb-1">
+                      Review Mode
+                    </h2>
+                    <p className="text-white/90 text-base md:text-lg font-semibold">
+                      Practice your incorrect answers
+                    </p>
+                  </div>
+                </div>
+                <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center">
+                  <span className="text-3xl font-black text-primary">
+                    {incorrectAnswersCount}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
 
         {/* Game Modes Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
