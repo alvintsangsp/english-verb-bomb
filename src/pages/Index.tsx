@@ -1,189 +1,153 @@
-import { useState } from "react";
+import { useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Star, Sparkles, Zap, Trophy, BookOpen } from "lucide-react";
-import GameMode from "@/components/GameMode";
-import GamePlay from "@/components/GamePlay";
-import ReviewMode from "@/components/ReviewMode";
+import { BookOpen, Gamepad2, Sparkles, Star, Trophy, Zap } from "lucide-react";
+import AppShell from "@/components/AppShell";
+import SectionCard from "@/components/SectionCard";
+import GlassPanel from "@/components/GlassPanel";
 import { useProgress } from "@/hooks/useProgress";
+import { gameModes } from "@/data/modes";
+
+const navItems = [
+  { label: "Home", to: "/" },
+  { label: "Game Modes", to: "/modes" },
+  { label: "Review Lab", to: "/review" },
+];
 
 const Index = () => {
-  const [selectedMode, setSelectedMode] = useState<string | null>(null);
-  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
-  const [showReview, setShowReview] = useState(false);
-  const { getIncorrectAnswers } = useProgress();
+  const navigate = useNavigate();
+  const { progress, getIncorrectAnswers } = useProgress();
 
   const incorrectAnswersCount = getIncorrectAnswers().length;
+  const stats = useMemo(() => {
+    const entries = Object.values(progress || {});
+    const completedLevels = entries.filter((entry) => entry.completed).length;
+    const totalStars = entries.reduce((sum, entry) => sum + (entry.stars || 0), 0);
+    const bestScore = entries.reduce((best, entry) => Math.max(best, entry.bestScore || 0), 0);
 
-  const gameModes = [
-    {
-      id: "present-simple",
-      title: "Present Simple",
-      icon: "🎯",
-      color: "bg-primary",
-      description: "I play, you play, he plays",
-    },
-    {
-      id: "past-simple",
-      title: "Past Simple",
-      icon: "⏰",
-      color: "bg-secondary",
-      description: "I played, you played",
-    },
-    {
-      id: "present-continuous",
-      title: "Present Continuous",
-      icon: "🏃",
-      color: "bg-success",
-      description: "I am playing",
-    },
-    {
-      id: "present-perfect",
-      title: "Present Perfect",
-      icon: "✨",
-      color: "bg-accent",
-      description: "I have played",
-    },
-    {
-      id: "big-challenge",
-      title: "Big Challenge",
-      icon: "🏆",
-      color: "bg-gradient-to-br from-primary via-secondary to-accent",
-      description: "Mix of all tenses!",
-    },
-  ];
-
-  if (showReview) {
-    return <ReviewMode onBack={() => setShowReview(false)} />;
-  }
-
-  if (selectedLevel) {
-    return (
-      <GamePlay
-        levelId={selectedLevel}
-        onBack={() => {
-          setSelectedLevel(null);
-          setSelectedMode(null);
-        }}
-      />
-    );
-  }
-
-  if (selectedMode) {
-    return (
-      <GameMode
-        mode={selectedMode}
-        onBack={() => setSelectedMode(null)}
-        onSelectLevel={(level) => setSelectedLevel(level)}
-      />
-    );
-  }
+    return { completedLevels, totalStars, bestScore };
+  }, [progress]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="text-center mb-8 md:mb-12 animate-bounce-in">
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <Sparkles className="w-8 h-8 md:w-12 md:h-12 text-secondary animate-pulse" />
-            <h1 className="text-4xl md:text-6xl font-black text-primary">
-              English Verb Bomb
-            </h1>
-            <Zap className="w-8 h-8 md:w-12 md:h-12 text-accent animate-pulse" />
-          </div>
-          <p className="text-lg md:text-2xl text-muted-foreground font-semibold">
-            Master English verbs through fun games! 🎮
-          </p>
-        </div>
-
-        {/* Review Mode Card */}
-        {incorrectAnswersCount > 0 && (
-          <Card
-            className="mb-6 overflow-hidden border-4 border-primary hover:scale-105 transition-all duration-300 cursor-pointer animate-bounce-in"
-            onClick={() => setShowReview(true)}
-          >
-            <div className="bg-gradient-to-r from-primary to-secondary p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <BookOpen className="w-12 h-12 text-white" />
-                  <div>
-                    <h2 className="text-2xl md:text-3xl font-black text-white mb-1">
-                      Review Mode
-                    </h2>
-                    <p className="text-white/90 text-base md:text-lg font-semibold">
-                      Practice your incorrect answers
-                    </p>
-                  </div>
-                </div>
-                <div className="bg-white rounded-full w-16 h-16 flex items-center justify-center">
-                  <span className="text-3xl font-black text-primary">
-                    {incorrectAnswersCount}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Game Modes Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {gameModes.map((mode, index) => (
-            <Card
+    <AppShell
+      title="Blast through verbs the playful way!"
+      subtitle="Play mini-challenges, earn stars, and master every tense with sparkly feedback."
+      badge="New modes + review lab"
+      navItems={navItems}
+      actions={
+        <Button size="sm" className="rounded-full font-black" onClick={() => navigate("/modes")}>
+          Start playing
+        </Button>
+      }
+    >
+      <SectionCard
+        title="Quick missions"
+        description="Jump into a friendly mode to warm up."
+        icon={<Gamepad2 className="h-6 w-6" />}
+        actions={
+          <Button variant="ghost" className="rounded-full" onClick={() => navigate("/modes")}>
+            View all modes
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {gameModes.slice(0, 3).map((mode) => (
+            <button
               key={mode.id}
-              className="overflow-hidden border-4 border-border hover:border-primary transition-all duration-300 hover:scale-105 hover:shadow-2xl cursor-pointer animate-bounce-in"
-              style={{ animationDelay: `${index * 0.1}s` }}
-              onClick={() => setSelectedMode(mode.id)}
+              onClick={() => navigate(`/levels/${mode.id}`)}
+              className="group flex flex-col gap-3 rounded-[calc(var(--radius)+0.5rem)] border-[3px] border-border/70 bg-card/90 p-5 text-left shadow hover:-translate-y-1 hover:border-primary/70 transition"
             >
-              <div className={`${mode.color} p-6 md:p-8`}>
-                <div className="text-center">
-                  <div className="text-6xl md:text-7xl mb-4">{mode.icon}</div>
-                  <h2 className="text-2xl md:text-3xl font-black text-white mb-2">
-                    {mode.title}
-                  </h2>
-                  <p className="text-white/90 text-base md:text-lg font-semibold">
-                    {mode.description}
-                  </p>
-                </div>
+              <div
+                className={`rounded-[1.75rem] bg-gradient-to-br ${mode.gradient} text-5xl p-4 text-center`}
+                aria-hidden
+              >
+                {mode.icon}
               </div>
-              <div className="p-4 bg-card">
-                <div className="flex items-center justify-center gap-2">
-                  <Star className="w-5 h-5 text-secondary fill-secondary" />
-                  <Star className="w-5 h-5 text-secondary fill-secondary" />
-                  <Star className="w-5 h-5 text-secondary fill-secondary" />
-                </div>
+              <div>
+                <p className="text-sm font-black uppercase tracking-wider text-muted-foreground">{mode.difficulty}</p>
+                <h3 className="text-2xl font-black">{mode.title}</h3>
+                <p className="text-sm text-muted-foreground">{mode.description}</p>
               </div>
-            </Card>
+            </button>
           ))}
         </div>
+      </SectionCard>
 
-        {/* Footer Stats */}
-        <div className="mt-8 md:mt-12 text-center">
-          <Card className="inline-block p-4 md:p-6 border-4 border-border">
-            <div className="flex items-center gap-4 md:gap-6">
-              <div className="flex items-center gap-2">
-                <Trophy className="w-6 h-6 md:w-8 md:h-8 text-secondary" />
-                <div className="text-left">
-                  <p className="text-xs md:text-sm text-muted-foreground font-semibold">
-                    Total Stars
-                  </p>
-                  <p className="text-xl md:text-2xl font-black text-primary">0</p>
-                </div>
-              </div>
-              <div className="w-px h-12 bg-border" />
-              <div className="flex items-center gap-2">
-                <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-accent" />
-                <div className="text-left">
-                  <p className="text-xs md:text-sm text-muted-foreground font-semibold">
-                    Levels Completed
-                  </p>
-                  <p className="text-xl md:text-2xl font-black text-primary">0</p>
-                </div>
-              </div>
-            </div>
-          </Card>
+      <GlassPanel className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-2xl bg-white/70 p-4 text-center shadow-inner">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Levels cleared</p>
+          <p className="text-3xl font-black text-primary">{stats.completedLevels}</p>
         </div>
-      </div>
-    </div>
+        <div className="rounded-2xl bg-white/70 p-4 text-center shadow-inner">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Stars collected</p>
+          <p className="text-3xl font-black text-secondary">{stats.totalStars}</p>
+        </div>
+        <div className="rounded-2xl bg-white/70 p-4 text-center shadow-inner">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Best score</p>
+          <p className="text-3xl font-black text-accent">{stats.bestScore}</p>
+        </div>
+        <div className="rounded-2xl bg-white/70 p-4 text-center shadow-inner">
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Review cards</p>
+          <p className="text-3xl font-black text-destructive">{incorrectAnswersCount}</p>
+        </div>
+      </GlassPanel>
+
+      <SectionCard
+        title="Review Lab"
+        description="Practice tricky verbs using your saved mistakes."
+        icon={<BookOpen className="h-6 w-6" />}
+        actions={
+          <Button
+            className="rounded-full font-black"
+            size="sm"
+            disabled={incorrectAnswersCount === 0}
+            onClick={() => navigate("/review")}
+          >
+            Start Review
+          </Button>
+        }
+      >
+        <div className="flex flex-col gap-4 rounded-[calc(var(--radius)+0.25rem)] border border-dashed border-primary/40 bg-primary/5 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-base text-muted-foreground">
+            {incorrectAnswersCount === 0
+              ? "Nice! You have no tricky questions waiting."
+              : `You have ${incorrectAnswersCount} cards ready to revisit.`}
+          </p>
+          <div className="flex items-center gap-3 text-primary">
+            <Sparkles className="h-6 w-6" />
+            <span className="text-sm font-black uppercase tracking-wide">Smart practice</span>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard
+        title="Why kids love Verb Bomb"
+        description="Made for tablets, giant buttons, and colorful celebrations!"
+        icon={<Zap className="h-6 w-6" />}
+        compact
+      >
+        <ul className="grid gap-3 text-sm text-muted-foreground sm:grid-cols-2">
+          <li className="flex items-center gap-2 font-semibold text-foreground">
+            <Star className="h-4 w-4 text-secondary" /> Sparkly confetti when you nail questions
+          </li>
+          <li className="flex items-center gap-2 font-semibold text-foreground">
+            <Trophy className="h-4 w-4 text-accent" /> Collect stars and unlock missions
+          </li>
+          <li className="flex items-center gap-2 font-semibold text-foreground">
+            <BookOpen className="h-4 w-4 text-primary" /> Built-in voice support for every prompt
+          </li>
+          <li className="flex items-center gap-2 font-semibold text-foreground">
+            <Sparkles className="h-4 w-4 text-secondary" /> Designed for small hands & big imaginations
+          </li>
+        </ul>
+      </SectionCard>
+
+      <footer className="rounded-[calc(var(--radius)+0.25rem)] border border-dashed border-border/80 bg-white/70 p-4 text-center text-xs text-muted-foreground sm:text-sm">
+        <p className="font-semibold text-foreground">Feedback: <a href="mailto:cs@bitebite.app" className="text-primary underline">cs@bitebite.app</a></p>
+        <p className="mt-1 font-semibold text-foreground">Produced by Merlin Advisory Solution</p>
+        <p className="mt-1 text-muted-foreground">© 2025 BiteBite. All rights reserved.</p>
+      </footer>
+    </AppShell>
   );
 };
 

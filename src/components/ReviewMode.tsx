@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ArrowLeft, BookOpen, CheckCircle, XCircle, Sparkles } from "lucide-react";
 import { useProgress, IncorrectAnswer } from "@/hooks/useProgress";
 import { getLevelById, Question } from "@/data/levels";
 import { audioManager } from "@/utils/audio";
 import { toast } from "sonner";
+import GlassPanel from "@/components/GlassPanel";
+import SectionCard from "@/components/SectionCard";
 
 interface ReviewModeProps {
   onBack: () => void;
@@ -39,20 +40,18 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
 
   if (reviewQuestions.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-4 md:p-8 flex items-center justify-center">
-        <Card className="p-8 border-4 border-border text-center max-w-md">
-          <CheckCircle className="w-16 h-16 text-success mx-auto mb-4" />
-          <h2 className="text-2xl md:text-3xl font-black text-primary mb-4">
-            Great Job!
-          </h2>
-          <p className="text-lg text-muted-foreground mb-6">
-            You have no incorrect answers to review. Keep up the excellent work!
+      <div className="flex min-h-screen items-center justify-center bg-gradient-to-b from-[hsl(var(--hero-start))] to-[hsl(var(--hero-end))] px-4 py-6">
+        <GlassPanel className="max-w-md text-center">
+          <CheckCircle className="mx-auto mb-4 h-16 w-16 text-success" />
+          <h2 className="text-3xl font-black text-foreground">Great job!</h2>
+          <p className="mt-2 text-base text-muted-foreground">
+            You have no tricky questions waiting. Keep playing to collect more stars.
           </p>
-          <Button onClick={onBack} size="lg" className="font-bold">
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Home
+          <Button onClick={onBack} className="mt-6 rounded-full font-black">
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back home
           </Button>
-        </Card>
+        </GlassPanel>
       </div>
     );
   }
@@ -105,97 +104,91 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-4 md:p-8">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--hero-start))] to-[hsl(var(--hero-end))] px-4 py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+        <GlassPanel className="flex flex-wrap items-center justify-between gap-4">
           <Button
             onClick={onBack}
             variant="outline"
-            size="lg"
-            className="border-4 border-border hover:border-primary font-bold"
+            size="sm"
+            className="rounded-full border-2 border-border/80 font-black uppercase tracking-wide"
           >
-            <ArrowLeft className="w-5 h-5 mr-2" />
+            <ArrowLeft className="mr-2 h-4 w-4" />
             Back
           </Button>
-          <div className="flex items-center gap-2 bg-secondary px-4 py-2 rounded-full">
-            <BookOpen className="w-6 h-6 text-secondary-foreground" />
-            <span className="text-xl font-black text-secondary-foreground">
+          <div className="flex items-center gap-3 rounded-full bg-secondary px-4 py-2 text-secondary-foreground">
+            <BookOpen className="h-5 w-5" />
+            <span className="text-lg font-black">
               {currentIndex + 1}/{reviewQuestions.length}
             </span>
           </div>
-        </div>
+        </GlassPanel>
 
-        {/* Title */}
-        <div className="text-center mb-8 animate-bounce-in">
-          <h1 className="text-3xl md:text-5xl font-black text-primary mb-2">
-            Review Mode
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground font-semibold">
-            Practice your incorrect answers
-          </p>
-        </div>
-
-        {/* Question Card */}
-        <Card className="mb-6 p-6 md:p-8 border-4 border-border animate-bounce-in">
-          <div className="text-center">
-            <div className="mb-4">
-              <Sparkles className="w-10 h-10 mx-auto text-secondary mb-2" />
-              <p className="text-2xl md:text-4xl font-black text-foreground leading-relaxed">
-                {currentQ.sentence}
-              </p>
-            </div>
+        <SectionCard
+          title="Review question"
+          description="Playful spacing keeps everything readable, even on tablets."
+          icon={<Sparkles className="h-5 w-5" />}
+        >
+          <div className="space-y-4 text-center">
+            <p className="text-2xl font-black text-foreground md:text-4xl">{currentQ.sentence}</p>
             <Button
               onClick={handleSpeak}
-              variant="outline"
+              variant="secondary"
               size="sm"
-              className="border-2 border-border hover:border-primary font-bold"
+              className="rounded-full font-black"
             >
               🔊 Listen
             </Button>
           </div>
-        </Card>
+        </SectionCard>
 
-        {/* Previous Wrong Answer */}
-        <Card className="mb-6 p-4 border-2 border-destructive/50 bg-destructive/5">
-          <div className="flex items-start gap-3">
-            <XCircle className="w-5 h-5 text-destructive shrink-0 mt-0.5" />
-            <div>
-              <p className="font-bold text-sm text-muted-foreground mb-1">
-                You previously answered:
-              </p>
-              <p className="text-lg font-black text-destructive">
-                {typeof currentReview.incorrectAnswer.userAnswer === 'object'
-                  ? JSON.stringify(currentReview.incorrectAnswer.userAnswer)
-                  : currentReview.incorrectAnswer.userAnswer}
-              </p>
+        <SectionCard
+          title="Your previous answer"
+          description="See what you chose last time."
+          icon={<XCircle className="h-5 w-5 text-destructive" />}
+        >
+          <div className="rounded-3xl border border-destructive/40 bg-destructive/10 p-4 text-destructive">
+            {typeof currentReview.incorrectAnswer.userAnswer === "object"
+              ? JSON.stringify(currentReview.incorrectAnswer.userAnswer)
+              : currentReview.incorrectAnswer.userAnswer}
+          </div>
+        </SectionCard>
+
+        {currentQ.type === "multiple-choice" ? (
+          <SectionCard
+            title="Try again"
+            description="Answers stay spaced so tiny fingers can tap confidently."
+          >
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {currentQ.options.map((option, index) => (
+                <Button
+                  key={index}
+                  onClick={() => handleAnswerClick(index)}
+                  disabled={showFeedback}
+                  className={`h-auto rounded-3xl border-3 border-border px-4 py-5 text-xl font-black ${
+                    showFeedback
+                      ? index === currentQ.correctAnswer
+                        ? "bg-success text-success-foreground border-success"
+                        : selectedAnswer === index
+                        ? "bg-destructive text-destructive-foreground border-destructive"
+                        : "opacity-80"
+                      : "hover:border-primary hover:-translate-y-1"
+                  }`}
+                >
+                  {option}
+                </Button>
+              ))}
             </div>
-          </div>
-        </Card>
-
-        {/* Answer Options */}
-        {currentQ.type === "multiple-choice" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {currentQ.options.map((option, index) => (
-              <Button
-                key={index}
-                onClick={() => handleAnswerClick(index)}
-                disabled={showFeedback}
-                size="lg"
-                className={`h-auto py-6 text-2xl font-black border-4 transition-all duration-300 ${
-                  showFeedback
-                    ? index === currentQ.correctAnswer
-                      ? "bg-success border-success text-success-foreground hover:bg-success"
-                      : selectedAnswer === index
-                      ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
-                      : "border-border"
-                    : "border-border hover:border-primary hover:scale-105"
-                }`}
-              >
-                {option}
-              </Button>
-            ))}
-          </div>
+          </SectionCard>
+        ) : (
+          <SectionCard
+            title="Replay suggestion"
+            description="This question type is best practiced inside its level."
+          >
+            <p className="text-sm text-muted-foreground">
+              Head back to the level to retry this interactive question type.
+            </p>
+          </SectionCard>
         )}
       </div>
     </div>

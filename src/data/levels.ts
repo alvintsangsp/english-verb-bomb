@@ -233,6 +233,118 @@ export const levels: Level[] = [
       },
     ],
   },
+  // Future Simple
+  {
+    id: 7,
+    title: "Level 1: Tomorrow Plans",
+    mode: "future-simple",
+    difficulty: "medium",
+    unlockRequirement: 5,
+    questions: [
+      {
+        id: 19,
+        type: "multiple-choice",
+        sentence: "She ___ bake a cake tomorrow.",
+        options: ["will", "wills", "is going to", "baked"],
+        correctAnswer: 0,
+        explanation: "Use 'will' + base verb to form the future simple tense.",
+      },
+      {
+        id: 20,
+        type: "gap-fill",
+        sentence: "We ___ visit grandma next weekend.",
+        options: ["will", "are", "were", "have"],
+        correctAnswer: "will",
+        explanation: "Future plans often use 'will' when we decide now.",
+      },
+      {
+        id: 21,
+        type: "true-false",
+        sentence: "They will goes to the zoo on Saturday.",
+        options: ["True", "False"],
+        correctAnswer: 1,
+        explanation: "It should be 'will go' without 's' in the base verb.",
+      },
+    ],
+  },
+  // Past Continuous
+  {
+    id: 8,
+    title: "Level 1: Story Time",
+    mode: "past-continuous",
+    difficulty: "medium",
+    unlockRequirement: 6,
+    questions: [
+      {
+        id: 22,
+        type: "gap-fill",
+        sentence: "I ___ (watch) a movie when you called.",
+        options: ["was watching", "were watching", "watch", "watched"],
+        correctAnswer: "was watching",
+        explanation: "Use was/were + verb-ing for past continuous actions.",
+      },
+      {
+        id: 23,
+        type: "multiple-choice",
+        sentence: "They ___ dinner while it started to rain.",
+        options: ["are cooking", "cooked", "were cooking", "was cooking"],
+        correctAnswer: 2,
+        explanation: "Past continuous describes the action happening when another action interrupted.",
+      },
+      {
+        id: 24,
+        type: "sentence-reorder",
+        sentence: "He was reading a funny comic.",
+        options: ["was", "He", "comic", "reading", "a", "funny"],
+        correctAnswer: 0,
+        correctOrder: ["He", "was", "reading", "a", "funny", "comic"],
+        explanation: "Remember subject + was/were + verb-ing.",
+      },
+    ],
+  },
+  // Lightning Round
+  {
+    id: 9,
+    title: "Lightning Round",
+    mode: "lightning-round",
+    difficulty: "hard",
+    unlockRequirement: 8,
+    questions: [
+      {
+        id: 25,
+        type: "matching",
+        sentence: "Match the tense with the clue.",
+        options: ["Future Simple", "Past Continuous", "Present Perfect", "I will jump", "I was jumping", "I have jumped"],
+        correctAnswer: [
+          "Future Simple-I will jump",
+          "Past Continuous-I was jumping",
+          "Present Perfect-I have jumped",
+        ],
+        pairs: [
+          { left: "Future Simple", right: "I will jump" },
+          { left: "Past Continuous", right: "I was jumping" },
+          { left: "Present Perfect", right: "I have jumped" },
+        ],
+        explanation: "Great job matching each tense with the correct clue!",
+      },
+      {
+        id: 26,
+        type: "multiple-choice",
+        sentence: "Right now, they ___ their victory dance.",
+        options: ["do", "did", "have done", "are doing"],
+        correctAnswer: 3,
+        explanation: "Use present continuous for actions happening right now.",
+      },
+      {
+        id: 27,
+        type: "gap-fill",
+        sentence: "By tonight, we ___ finished the puzzle.",
+        options: ["will have", "will", "are", "were"],
+        correctAnswer: "will have",
+        explanation: "Future perfect uses 'will have' + past participle.",
+      },
+    ],
+  },
 ];
 
 export const getLevelsByMode = (mode: string): Level[] => {

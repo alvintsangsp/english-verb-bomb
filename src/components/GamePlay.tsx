@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { ArrowLeft, Heart, Star, Sparkles, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { getLevelById, Question } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
 import { audioManager } from "@/utils/audio";
+import GlassPanel from "@/components/GlassPanel";
+import SectionCard from "@/components/SectionCard";
 
 interface GamePlayProps {
   levelId: number;
@@ -25,12 +26,12 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [incorrectQuestionIds, setIncorrectQuestionIds] = useState<number[]>([]);
   const { updateLevelProgress, addIncorrectAnswer } = useProgress();
 
-  // Speak question when it changes
+  // Stop any speech on unmount
   useEffect(() => {
-    if (currentQ) {
-      audioManager.speakText(currentQ.sentence);
-    }
-  }, [currentQuestion]);
+    return () => {
+      audioManager.stopSpeaking();
+    };
+  }, []);
 
   const level = getLevelById(levelId);
   if (!level) {
@@ -310,127 +311,116 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-primary/10 p-2 md:p-8 flex flex-col">
-      <div className="max-w-4xl mx-auto w-full flex flex-col h-screen max-h-screen">
-        {/* Compact Header */}
-        <div className="flex items-center justify-between mb-2 md:mb-4 shrink-0">
-          <Button
-            onClick={onBack}
-            variant="outline"
-            size="sm"
-            className="border-2 md:border-4 border-border hover:border-primary font-bold p-2"
-          >
-            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-          </Button>
-
-          <div className="flex items-center gap-2 md:gap-4">
-            <div className="flex items-center gap-0.5 md:gap-1">
+    <div className="min-h-screen bg-gradient-to-b from-[hsl(var(--hero-start))] to-[hsl(var(--hero-end))] px-4 py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-5">
+        <GlassPanel className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-3">
+            <Button
+              onClick={onBack}
+              variant="outline"
+              size="sm"
+              className="max-w-fit rounded-full border-2 border-border/80 font-black uppercase tracking-wide"
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Exit level
+            </Button>
+            <div>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Now playing</p>
+              <h1 className="text-3xl font-black text-foreground">{level.title}</h1>
+              <p className="text-sm text-muted-foreground">Mode: {level.mode.replace("-", " ")}</p>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1">
               {[...Array(3)].map((_, i) => (
                 <Heart
-                  key={i}
-                  className={`w-5 h-5 md:w-8 md:h-8 ${
-                    i < lives
-                      ? "text-destructive fill-destructive"
-                      : "text-muted-foreground"
-                  }`}
+                  key={`life-${i}`}
+                  className={`h-7 w-7 ${i < lives ? "text-destructive fill-destructive" : "text-border"}`}
                 />
               ))}
             </div>
-            <div className="flex items-center gap-1 md:gap-2 bg-secondary px-2 md:px-4 py-1 md:py-2 rounded-full">
-              <Star className="w-4 h-4 md:w-6 md:h-6 text-secondary-foreground fill-secondary-foreground" />
-              <span className="text-base md:text-xl font-black text-secondary-foreground">
-                {score}
-              </span>
+            <div className="flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-secondary-foreground">
+              <Star className="h-5 w-5 fill-secondary-foreground" />
+              <span className="text-xl font-black">{score}</span>
             </div>
           </div>
-        </div>
+        </GlassPanel>
 
-        {/* Compact Progress Bar */}
-        <div className="mb-2 md:mb-6 shrink-0">
-          <div className="h-2 md:h-4 bg-muted rounded-full overflow-hidden border-2 md:border-4 border-border">
-            <div
-              className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-center mt-1 text-xs md:text-sm font-bold text-muted-foreground">
-            Question {currentQuestion + 1} of {questions.length}
-          </p>
-        </div>
-
-        {/* Compact Question Card */}
-        <Card className="mb-2 md:mb-4 p-3 md:p-6 border-2 md:border-4 border-border animate-bounce-in shrink-0">
-          <div className="text-center">
-            <div className="mb-2 md:mb-4">
-              <div className="flex items-center justify-center gap-2 mb-2">
-                <Sparkles className="w-6 h-6 md:w-10 md:h-10 text-secondary" />
-                <Button
-                  onClick={handleSpeak}
-                  variant="ghost"
-                  size="sm"
-                  className="p-2"
-                  title="Listen to question"
-                >
-                  <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-primary" />
-                </Button>
+        <GlassPanel className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                Question {currentQuestion + 1} of {questions.length}
+              </p>
+              <div className="mt-2 h-3 w-full overflow-hidden rounded-full border border-border/70">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
+                  style={{ width: `${progress}%` }}
+                />
               </div>
-              {currentQ.type === "gap-fill" ? (
-                <p className="text-lg md:text-3xl font-black text-foreground leading-snug md:leading-relaxed">
-                  {currentQ.sentence.split("___")[0]}
-                  <span className="inline-block min-w-[80px] md:min-w-[120px] border-b-2 md:border-b-4 border-primary mx-1 md:mx-2 text-primary">
-                    {gapAnswer || "___"}
-                  </span>
-                  {currentQ.sentence.split("___")[1]}
-                </p>
-              ) : currentQ.type === "sentence-reorder" ? (
-                <div>
-                  <p className="text-sm md:text-lg font-bold text-muted-foreground mb-2 md:mb-3">
-                    Put the words in the correct order:
-                  </p>
-                  {selectedWords.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 md:gap-2 justify-center mb-2 md:mb-3 min-h-[40px] md:min-h-[60px] p-2 md:p-4 bg-muted/30 rounded-lg">
-                      {selectedWords.map((word, index) => (
-                        <Button
-                          key={`selected-${index}`}
-                          onClick={() => handleRemoveWord(index)}
-                          variant="secondary"
-                          size="sm"
-                          className="text-base md:text-xl font-black border-2 md:border-4 border-secondary px-2 md:px-4 py-1 md:py-2"
-                        >
-                          {word}
-                        </Button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <p className="text-lg md:text-3xl font-black text-foreground leading-snug md:leading-relaxed">
-                  {currentQ.sentence}
-                </p>
-              )}
             </div>
+            <Button onClick={handleSpeak} variant="secondary" size="sm" className="rounded-full font-black">
+              <Volume2 className="mr-2 h-4 w-4" />
+              Listen
+            </Button>
           </div>
-        </Card>
+          <div className="text-center">
+            <div className="mb-4 flex justify-center">
+              <Sparkles className="h-8 w-8 text-secondary" />
+            </div>
+            {currentQ.type === "gap-fill" ? (
+              <p className="text-xl font-black leading-relaxed text-foreground md:text-3xl">
+                {currentQ.sentence.split("___")[0]}
+                <span className="mx-2 inline-block min-w-[90px] border-b-4 border-primary text-primary">
+                  {gapAnswer || "___"}
+                </span>
+                {currentQ.sentence.split("___")[1]}
+              </p>
+            ) : currentQ.type === "sentence-reorder" ? (
+              <div className="space-y-3">
+                <p className="text-base font-semibold text-muted-foreground">Tap words to build the sentence:</p>
+                {selectedWords.length > 0 && (
+                  <div className="flex flex-wrap justify-center gap-2 rounded-3xl border border-dashed border-border/70 bg-muted/40 p-3">
+                    {selectedWords.map((word, index) => (
+                      <Button
+                        key={`selected-${index}`}
+                        onClick={() => handleRemoveWord(index)}
+                        size="sm"
+                        variant="secondary"
+                        className="rounded-full border-2 border-secondary px-3 py-1 text-lg font-black"
+                      >
+                        {word}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : (
+              <p className="text-xl font-black leading-relaxed text-foreground md:text-3xl">{currentQ.sentence}</p>
+            )}
+          </div>
+        </GlassPanel>
 
-        {/* Compact Answer Options */}
-        <div className="flex-1 overflow-y-auto pb-4">
+        <SectionCard
+          title="Answer time"
+          description="Buttons stay large and spaced so nothing overlaps on tablets."
+        >
           {currentQ.type === "multiple-choice" && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 md:gap-4">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
               {currentQ.options.map((option, index) => (
                 <Button
                   key={index}
                   id={`answer-${index}`}
                   onClick={() => handleAnswerClick(index)}
                   disabled={showFeedback}
-                  size="sm"
-                  className={`h-auto py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 transition-all duration-300 ${
+                  className={`h-auto rounded-3xl border-3 border-border px-4 py-5 text-xl font-black transition ${
                     showFeedback
                       ? index === currentQ.correctAnswer
-                        ? "bg-success border-success text-success-foreground hover:bg-success"
+                        ? "bg-success text-success-foreground border-success"
                         : selectedAnswer === index
-                        ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
-                        : "border-border"
-                      : "border-border hover:border-primary hover:scale-105"
+                        ? "bg-destructive text-destructive-foreground border-destructive"
+                        : "opacity-80"
+                      : "hover:border-primary hover:-translate-y-1"
                   }`}
                 >
                   {option}
@@ -440,25 +430,20 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
           )}
 
           {currentQ.type === "gap-fill" && (
-            <div className="space-y-2 md:space-y-4">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                 {currentQ.options.map((option, index) => (
                   <Button
                     key={index}
                     onClick={() => {
                       setGapAnswer(option);
-                      if (!showFeedback) {
-                        const button = document.getElementById(`gap-${index}`);
-                        if (button) button.classList.add("animate-bounce-in");
-                      }
                     }}
                     disabled={showFeedback}
                     id={`gap-${index}`}
-                    size="sm"
                     variant={gapAnswer === option ? "default" : "outline"}
-                    className={`py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 transition-all duration-300 ${
+                    className={`rounded-3xl border-3 px-4 py-4 text-lg font-black ${
                       showFeedback && option === currentQ.correctAnswer
-                        ? "bg-success border-success text-success-foreground"
+                        ? "bg-success text-success-foreground border-success"
                         : ""
                     }`}
                   >
@@ -469,17 +454,16 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
               <Button
                 onClick={handleGapFillSubmit}
                 disabled={!gapAnswer || showFeedback}
-                size="sm"
-                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+                className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
               >
-                Check Answer
+                Check answer
               </Button>
             </div>
           )}
 
           {currentQ.type === "sentence-reorder" && (
-            <div className="space-y-2 md:space-y-4">
-              <div className="flex flex-wrap gap-1.5 md:gap-3 justify-center">
+            <div className="space-y-4">
+              <div className="flex flex-wrap justify-center gap-2">
                 {currentQ.options
                   .filter((word) => !selectedWords.includes(word))
                   .map((option, index) => (
@@ -487,8 +471,8 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
                       key={index}
                       onClick={() => handleWordClick(option)}
                       disabled={showFeedback}
-                      size="sm"
-                      className="py-2 md:py-6 px-3 md:px-6 text-base md:text-2xl font-black border-2 md:border-4 border-border hover:border-primary hover:scale-105"
+                      variant="outline"
+                      className="rounded-full border-3 border-border px-4 py-3 text-lg font-black hover:border-primary"
                     >
                       {option}
                     </Button>
@@ -497,30 +481,28 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
               <Button
                 onClick={handleReorderSubmit}
                 disabled={selectedWords.length !== currentQ.options.length || showFeedback}
-                size="sm"
-                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+                className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
               >
-                Check Answer
+                Check order
               </Button>
             </div>
           )}
 
           {currentQ.type === "true-false" && (
-            <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 gap-3">
               {currentQ.options.map((option, index) => (
                 <Button
                   key={index}
                   onClick={() => handleTrueFalseClick(index)}
                   disabled={showFeedback}
-                  size="sm"
-                  className={`h-auto py-4 md:py-8 text-xl md:text-3xl font-black border-2 md:border-4 transition-all duration-300 ${
+                  className={`h-auto rounded-3xl border-3 border-border py-5 text-2xl font-black ${
                     showFeedback
                       ? index === currentQ.correctAnswer
-                        ? "bg-success border-success text-success-foreground hover:bg-success"
+                        ? "bg-success text-success-foreground border-success"
                         : selectedAnswer === index
-                        ? "bg-destructive border-destructive text-destructive-foreground hover:bg-destructive"
-                        : "border-border"
-                      : "border-border hover:border-primary hover:scale-105"
+                        ? "bg-destructive text-destructive-foreground border-destructive"
+                        : "opacity-70"
+                      : "hover:border-primary"
                   }`}
                 >
                   {option}
@@ -530,33 +512,31 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
           )}
 
           {currentQ.type === "matching" && (
-            <div className="space-y-3 md:space-y-4">
-              <div className="grid grid-cols-2 gap-3 md:gap-4">
+            <div className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
-                  <p className="text-sm md:text-base font-bold text-center text-muted-foreground">Match Left</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Left side</p>
                   {currentQ.pairs?.map((pair, index) => (
                     <Button
                       key={`left-${index}`}
                       onClick={() => handleMatchingSelect(pair.left, "left")}
-                      disabled={showFeedback || matchingPairs.some(p => p.left === pair.left)}
-                      size="sm"
-                      variant={matchingPairs.some(p => p.left === pair.left) ? "secondary" : "outline"}
-                      className="w-full py-3 md:py-4 text-sm md:text-lg font-black border-2 md:border-4"
+                      disabled={showFeedback || matchingPairs.some((p) => p.left === pair.left)}
+                      variant={matchingPairs.some((p) => p.left === pair.left) ? "secondary" : "outline"}
+                      className="w-full rounded-3xl border-3 border-border px-4 py-3 text-base font-black"
                     >
                       {pair.left}
                     </Button>
                   ))}
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm md:text-base font-bold text-center text-muted-foreground">Match Right</p>
+                  <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">Right side</p>
                   {currentQ.pairs?.map((pair, index) => (
                     <Button
                       key={`right-${index}`}
                       onClick={() => handleMatchingSelect(pair.right, "right")}
-                      disabled={showFeedback || matchingPairs.some(p => p.right === pair.right)}
-                      size="sm"
-                      variant={matchingPairs.some(p => p.right === pair.right) ? "secondary" : "outline"}
-                      className="w-full py-3 md:py-4 text-sm md:text-lg font-black border-2 md:border-4"
+                      disabled={showFeedback || matchingPairs.some((p) => p.right === pair.right)}
+                      variant={matchingPairs.some((p) => p.right === pair.right) ? "secondary" : "outline"}
+                      className="w-full rounded-3xl border-3 border-border px-4 py-3 text-base font-black"
                     >
                       {pair.right}
                     </Button>
@@ -564,10 +544,10 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
                 </div>
               </div>
               {matchingPairs.length > 0 && (
-                <div className="bg-muted/30 p-3 md:p-4 rounded-lg">
-                  <p className="text-xs md:text-sm font-bold text-muted-foreground mb-2">Your matches:</p>
+                <div className="rounded-3xl border border-dashed border-border/80 bg-muted/50 p-4 text-sm font-semibold text-muted-foreground">
+                  <p className="mb-2 text-xs font-black uppercase tracking-widest">Your matches</p>
                   {matchingPairs.map((pair, index) => (
-                    <div key={index} className="text-sm md:text-base font-semibold">
+                    <div key={`pair-${index}`}>
                       {pair.left} → {pair.right}
                     </div>
                   ))}
@@ -576,14 +556,13 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
               <Button
                 onClick={handleMatchingSubmit}
                 disabled={matchingPairs.length < (currentQ.pairs?.length || 0) || showFeedback}
-                size="sm"
-                className="w-full py-3 md:py-6 text-base md:text-2xl font-black border-2 md:border-4 border-primary"
+                className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
               >
-                Check Matches
+                Check matches
               </Button>
             </div>
           )}
-        </div>
+        </SectionCard>
       </div>
     </div>
   );
