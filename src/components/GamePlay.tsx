@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { ArrowLeft, Heart, Star, Sparkles } from "lucide-react";
+import { ArrowLeft, Heart, Star, Sparkles, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { getLevelById, Question } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
+import { audioManager } from "@/utils/audio";
 
 interface GamePlayProps {
   levelId: number;
@@ -21,7 +22,15 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [gapAnswer, setGapAnswer] = useState("");
   const [matchingPairs, setMatchingPairs] = useState<{left: string | null, right: string | null}[]>([]);
-  const { updateLevelProgress } = useProgress();
+  const [incorrectQuestionIds, setIncorrectQuestionIds] = useState<number[]>([]);
+  const { updateLevelProgress, addIncorrectAnswer } = useProgress();
+
+  // Speak question when it changes
+  useEffect(() => {
+    if (currentQ) {
+      audioManager.speakText(currentQ.sentence);
+    }
+  }, [currentQuestion]);
 
   const level = getLevelById(levelId);
   if (!level) {
@@ -40,6 +49,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const handleAnswerClick = (answerIndex: number) => {
     if (showFeedback) return;
 
+    audioManager.playClick();
     setSelectedAnswer(answerIndex);
     const correct = answerIndex === currentQ.correctAnswer;
     setIsCorrect(correct);
@@ -47,6 +57,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
 
     if (correct) {
       setScore(score + 1);
+      audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
@@ -57,6 +68,20 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
       }
     } else {
       setLives(lives - 1);
+      audioManager.playError();
+      
+      // Track incorrect answer
+      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+      addIncorrectAnswer({
+        questionId: currentQ.id,
+        levelId,
+        question: currentQ.sentence,
+        userAnswer: answerIndex,
+        correctAnswer: currentQ.correctAnswer,
+        explanation: currentQ.explanation,
+        timestamp: Date.now(),
+      });
+      
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
@@ -73,17 +98,32 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const handleGapFillSubmit = () => {
     if (showFeedback || !gapAnswer.trim()) return;
 
+    audioManager.playClick();
     const correct = gapAnswer.toLowerCase().trim() === (currentQ.correctAnswer as string).toLowerCase();
     setIsCorrect(correct);
     setShowFeedback(true);
 
     if (correct) {
       setScore(score + 1);
+      audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
     } else {
       setLives(lives - 1);
+      audioManager.playError();
+      
+      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+      addIncorrectAnswer({
+        questionId: currentQ.id,
+        levelId,
+        question: currentQ.sentence,
+        userAnswer: gapAnswer,
+        correctAnswer: currentQ.correctAnswer,
+        explanation: currentQ.explanation,
+        timestamp: Date.now(),
+      });
+      
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
@@ -105,17 +145,32 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const handleReorderSubmit = () => {
     if (showFeedback || selectedWords.length !== currentQ.options.length) return;
 
+    audioManager.playClick();
     const correct = JSON.stringify(selectedWords) === JSON.stringify(currentQ.correctOrder);
     setIsCorrect(correct);
     setShowFeedback(true);
 
     if (correct) {
       setScore(score + 1);
+      audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
     } else {
       setLives(lives - 1);
+      audioManager.playError();
+      
+      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+      addIncorrectAnswer({
+        questionId: currentQ.id,
+        levelId,
+        question: currentQ.sentence,
+        userAnswer: selectedWords,
+        correctAnswer: currentQ.correctOrder || [],
+        explanation: currentQ.explanation,
+        timestamp: Date.now(),
+      });
+      
       toast.error("❌ Not quite!", {
         description: `The correct order is: ${currentQ.correctOrder?.join(" ")}`,
       });
@@ -127,6 +182,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const handleTrueFalseClick = (answerIndex: number) => {
     if (showFeedback) return;
 
+    audioManager.playClick();
     setSelectedAnswer(answerIndex);
     const correct = answerIndex === currentQ.correctAnswer;
     setIsCorrect(correct);
@@ -134,11 +190,25 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
 
     if (correct) {
       setScore(score + 1);
+      audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
     } else {
       setLives(lives - 1);
+      audioManager.playError();
+      
+      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+      addIncorrectAnswer({
+        questionId: currentQ.id,
+        levelId,
+        question: currentQ.sentence,
+        userAnswer: answerIndex,
+        correctAnswer: currentQ.correctAnswer,
+        explanation: currentQ.explanation,
+        timestamp: Date.now(),
+      });
+      
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
@@ -175,6 +245,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const handleMatchingSubmit = () => {
     if (showFeedback || matchingPairs.length < (currentQ.pairs?.length || 0)) return;
 
+    audioManager.playClick();
     const userAnswers = matchingPairs
       .filter((pair) => pair.left && pair.right)
       .map((pair) => `${pair.left}-${pair.right}`);
@@ -187,11 +258,25 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
 
     if (correct) {
       setScore(score + 1);
+      audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
     } else {
       setLives(lives - 1);
+      audioManager.playError();
+      
+      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+      addIncorrectAnswer({
+        questionId: currentQ.id,
+        levelId,
+        question: currentQ.sentence,
+        userAnswer: userAnswers,
+        correctAnswer: currentQ.correctAnswer,
+        explanation: currentQ.explanation,
+        timestamp: Date.now(),
+      });
+      
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
@@ -211,11 +296,17 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         setMatchingPairs([]);
       } else {
         const finalScore = score + (correct ? 1 : 0);
-        updateLevelProgress(levelId, finalScore, questions.length);
+        updateLevelProgress(levelId, finalScore, questions.length, incorrectQuestionIds);
+        audioManager.playLevelComplete();
+        audioManager.stopSpeaking();
         toast.success(`🏆 Level Complete! Score: ${finalScore}/${questions.length}`);
         setTimeout(() => onBack(), 2000);
       }
     }, 2000);
+  };
+
+  const handleSpeak = () => {
+    audioManager.speakText(currentQ.sentence);
   };
 
   return (
@@ -271,7 +362,18 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         <Card className="mb-2 md:mb-4 p-3 md:p-6 border-2 md:border-4 border-border animate-bounce-in shrink-0">
           <div className="text-center">
             <div className="mb-2 md:mb-4">
-              <Sparkles className="w-6 h-6 md:w-10 md:h-10 mx-auto text-secondary mb-2" />
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-6 h-6 md:w-10 md:h-10 text-secondary" />
+                <Button
+                  onClick={handleSpeak}
+                  variant="ghost"
+                  size="sm"
+                  className="p-2"
+                  title="Listen to question"
+                >
+                  <Volume2 className="w-5 h-5 md:w-6 md:h-6 text-primary" />
+                </Button>
+              </div>
               {currentQ.type === "gap-fill" ? (
                 <p className="text-lg md:text-3xl font-black text-foreground leading-snug md:leading-relaxed">
                   {currentQ.sentence.split("___")[0]}
