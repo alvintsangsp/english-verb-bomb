@@ -7,6 +7,7 @@ import GamePlay from "@/components/GamePlay";
 
 const Index = () => {
   const [selectedMode, setSelectedMode] = useState<string | null>(null);
+  const [selectedLevel, setSelectedLevel] = useState<number | null>(null);
 
   const gameModes = [
     {
@@ -46,11 +47,24 @@ const Index = () => {
     },
   ];
 
-  if (selectedMode) {
+  if (selectedLevel) {
     return (
       <GamePlay
+        levelId={selectedLevel}
+        onBack={() => {
+          setSelectedLevel(null);
+          setSelectedMode(null);
+        }}
+      />
+    );
+  }
+
+  if (selectedMode) {
+    return (
+      <GameMode
         mode={selectedMode}
         onBack={() => setSelectedMode(null)}
+        onSelectLevel={(level) => setSelectedLevel(level)}
       />
     );
   }
