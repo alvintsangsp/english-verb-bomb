@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-interface SectionCardProps extends React.ComponentProps<typeof Card> {
+interface SectionCardProps extends Omit<React.ComponentProps<typeof Card>, 'title'> {
   title?: ReactNode;
   description?: ReactNode;
   icon?: ReactNode;

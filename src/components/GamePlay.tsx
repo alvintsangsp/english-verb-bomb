@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, Star, Sparkles, Volume2 } from "lucide-react";
+import { ArrowLeft, Heart, Star, Sparkles, Volume2, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { getLevelById, Question } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
@@ -286,6 +286,11 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     moveToNextQuestion(correct);
   };
 
+  const handleMatchingReset = () => {
+    audioManager.playClick();
+    setMatchingPairs([]);
+  };
+
   const moveToNextQuestion = (correct: boolean) => {
     setTimeout(() => {
       if (currentQuestion < questions.length - 1) {
@@ -553,13 +558,24 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
                   ))}
                 </div>
               )}
-              <Button
-                onClick={handleMatchingSubmit}
-                disabled={matchingPairs.length < (currentQ.pairs?.length || 0) || showFeedback}
-                className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
-              >
-                Check matches
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleMatchingReset}
+                  variant="outline"
+                  disabled={showFeedback || matchingPairs.length === 0}
+                  className="flex-1 rounded-3xl border-3 border-border py-4 text-lg font-black"
+                >
+                  <RotateCcw className="mr-2 h-5 w-5" />
+                  Reset
+                </Button>
+                <Button
+                  onClick={handleMatchingSubmit}
+                  disabled={matchingPairs.length < (currentQ.pairs?.length || 0) || showFeedback}
+                  className="flex-1 rounded-3xl border-3 border-primary py-4 text-lg font-black"
+                >
+                  Check matches
+                </Button>
+              </div>
             </div>
           )}
         </SectionCard>
