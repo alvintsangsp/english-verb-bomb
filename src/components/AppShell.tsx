@@ -1,9 +1,10 @@
 import { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { Sparkles, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import GlassPanel from "@/components/GlassPanel";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface NavItem {
   label: string;
@@ -32,6 +33,27 @@ const AppShell = ({
   children,
   className,
 }: AppShellProps) => {
+  const handleShare = async () => {
+    const shareData = {
+      title: "English Verb Bomb",
+      text: "Practice English verbs with fun games!",
+      url: "https://bitebite.app",
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText("https://bitebite.app");
+        toast.success("Link copied to clipboard!");
+      }
+    } catch (err) {
+      if (err instanceof Error && err.name !== "AbortError") {
+        toast.error("Failed to share");
+      }
+    }
+  };
+
   return (
     <div
       className={cn(
@@ -45,22 +67,33 @@ const AppShell = ({
             <Sparkles className="h-6 w-6 text-secondary" />
             English Verb Bomb
           </div>
-          <div className="hidden items-center gap-1 md:flex">
-            {navItems.map((link) => (
-              <NavLink
-                key={link.to}
-                to={link.to}
-                className="rounded-full px-4 py-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
-                activeClassName="bg-primary/10 text-primary"
-              >
-                <span className="flex items-center gap-2">
-                  {link.icon}
-                  {link.label}
-                </span>
-              </NavLink>
-            ))}
+          <div className="flex items-center gap-2">
+            <div className="hidden items-center gap-1 md:flex">
+              {navItems.map((link) => (
+                <NavLink
+                  key={link.to}
+                  to={link.to}
+                  className="rounded-full px-4 py-2 text-sm font-bold text-muted-foreground transition hover:text-primary"
+                  activeClassName="bg-primary/10 text-primary"
+                >
+                  <span className="flex items-center gap-2">
+                    {link.icon}
+                    {link.label}
+                  </span>
+                </NavLink>
+              ))}
+            </div>
+            <Button
+              onClick={handleShare}
+              variant="ghost"
+              size="sm"
+              className="rounded-full font-bold"
+            >
+              <Share2 className="h-4 w-4" />
+              <span className="ml-2 hidden md:inline">Share</span>
+            </Button>
+            {actions && <div className="hidden md:flex">{actions}</div>}
           </div>
-          {actions && <div className="hidden md:flex">{actions}</div>}
         </div>
       </header>
 
