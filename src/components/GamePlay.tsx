@@ -13,6 +13,17 @@ interface GamePlayProps {
   onBack: () => void;
 }
 
+const MAX_SESSION_QUESTIONS = 20;
+
+const shuffleArray = <T,>(items: T[]): T[] => {
+  const arr = [...items];
+  for (let i = arr.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+};
+
 const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [score, setScore] = useState(0);
@@ -22,11 +33,22 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [isCorrect, setIsCorrect] = useState(false);
   const [selectedWords, setSelectedWords] = useState<string[]>([]);
   const [gapAnswer, setGapAnswer] = useState("");
-  const [matchingPairs, setMatchingPairs] = useState<{left: string | null, right: string | null}[]>([]);
+  const [matchingPairs, setMatchingPairs] = useState<{ left: string | null; right: string | null }[]>([]);
   const [incorrectQuestionIds, setIncorrectQuestionIds] = useState<number[]>([]);
-  const { updateLevelProgress, addIncorrectAnswer } = useProgress();
+  const [attemptedQuestionIds, setAttemptedQuestionIds] = useState<number[]>([]);
+  const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
+  const {
+    progress,
+    incorrectAnswers,
+    updateLevelProgress,
+    addIncorrectAnswer,
+    saveLastPlayedLevel,
+  } = useProgress();
 
-  // Stop any speech on unmount
+  useEffect(() => {
+    saveLastPlayedLevel(levelId);
+  }, [levelId, saveLastPlayedLevel]);
+
   useEffect(() => {
     return () => {
       audioManager.stopSpeaking();
@@ -42,10 +64,91 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     );
   }
 
-  const questions = level.questions;
+  const buildSessionQuestions = (resetCycle = false): Question[] => {
+    const levelQuestions = level.questions;
+    if (!levelQuestions.length) return [];
 
+    const askedHistory = resetCycle ? [] : progress[levelId]?.askedQuestions || [];
+    const incorrectMap = new Map<number, Question>();
+    incorrectAnswers.forEach((answer) => {
+      if (answer.levelId !== levelId) return;
+      const question = levelQuestions.find((q) => q.id === answer.questionId);
+      if (question) {
+        incorrectMap.set(question.id, question);
+      }
+    });
+
+    const incorrectPool = shuffleArray(Array.from(incorrectMap.values()));
+    const desiredCount = Math.min(MAX_SESSION_QUESTIONS, levelQuestions.length);
+    const selected: Question[] = [...incorrectPool];
+
+    const availableNew = levelQuestions.filter(
+      (question) =>
+        !askedHistory.includes(question.id) && !selected.some((chosen) => chosen.id === question.id)
+    );
+
+    if (selected.length < desiredCount) {
+      selected.push(...shuffleArray(availableNew).slice(0, desiredCount - selected.length));
+    }
+
+    if (selected.length < desiredCount) {
+      const fallbackPool = levelQuestions.filter(
+        (question) => !selected.some((chosen) => chosen.id === question.id)
+      );
+      selected.push(...shuffleArray(fallbackPool).slice(0, desiredCount - selected.length));
+    }
+
+    return selected.slice(0, desiredCount);
+  };
+
+  const initializeSession = (resetCycle = false) => {
+    const nextQuestions = buildSessionQuestions(resetCycle);
+    setSessionQuestions(nextQuestions);
+    setCurrentQuestion(0);
+    setScore(0);
+    setLives(3);
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setIsCorrect(false);
+    setSelectedWords([]);
+    setGapAnswer("");
+    setMatchingPairs([]);
+    setIncorrectQuestionIds([]);
+    setAttemptedQuestionIds([]);
+  };
+
+  useEffect(() => {
+    initializeSession();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [levelId]);
+
+  const questions = sessionQuestions;
   const currentQ = questions[currentQuestion];
-  const progress = ((currentQuestion + 1) / questions.length) * 100;
+  const progressValue = questions.length ? ((currentQuestion + 1) / questions.length) * 100 : 0;
+
+  const recordAttempt = (questionId: number) => {
+    setAttemptedQuestionIds((prev) => (prev.includes(questionId) ? prev : [...prev, questionId]));
+  };
+
+  useEffect(() => {
+    audioManager.stopSpeaking();
+  }, [currentQuestion]);
+
+  if (questions.length === 0 || !currentQ) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[hsl(var(--hero-start))] to-[hsl(var(--hero-end))] px-4 py-6">
+        <GlassPanel className="max-w-md text-center">
+          <p className="text-2xl font-black text-foreground">No questions available</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            This level doesn&apos;t have any available questions right now. Please choose another level.
+          </p>
+          <Button onClick={onBack} className="mt-6 rounded-full font-black">
+            Back
+          </Button>
+        </GlassPanel>
+      </div>
+    );
+  }
 
   const handleAnswerClick = (answerIndex: number) => {
     if (showFeedback) return;
@@ -55,24 +158,30 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     const correct = answerIndex === currentQ.correctAnswer;
     setIsCorrect(correct);
     setShowFeedback(true);
+    recordAttempt(currentQ.id);
 
     if (correct) {
-      setScore(score + 1);
+      const updatedScore = score + 1;
+      setScore(updatedScore);
       audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
-      
+
       const button = document.getElementById(`answer-${answerIndex}`);
       if (button) {
         button.classList.add("animate-confetti");
       }
+      moveToNextQuestion(true, updatedScore);
     } else {
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       audioManager.playError();
-      
-      // Track incorrect answer
-      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+
+      const newIncorrectIds = incorrectQuestionIds.includes(currentQ.id)
+        ? incorrectQuestionIds
+        : [...incorrectQuestionIds, currentQ.id];
+      setIncorrectQuestionIds(newIncorrectIds);
       addIncorrectAnswer({
         questionId: currentQ.id,
         levelId,
@@ -82,18 +191,22 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         explanation: currentQ.explanation,
         timestamp: Date.now(),
       });
-      
+
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
-      
+
       const button = document.getElementById(`answer-${answerIndex}`);
       if (button) {
         button.classList.add("animate-shake");
       }
-    }
+      if (newLives <= 0) {
+        setTimeout(() => concludeGame(score, newIncorrectIds, "fail"), 1500);
+        return;
+      }
 
-    moveToNextQuestion(correct);
+      moveToNextQuestion(false, score, newIncorrectIds);
+    }
   };
 
   const handleGapFillSubmit = () => {
@@ -103,18 +216,25 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     const correct = gapAnswer.toLowerCase().trim() === (currentQ.correctAnswer as string).toLowerCase();
     setIsCorrect(correct);
     setShowFeedback(true);
+    recordAttempt(currentQ.id);
 
     if (correct) {
-      setScore(score + 1);
+      const updatedScore = score + 1;
+      setScore(updatedScore);
       audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
+      moveToNextQuestion(true, updatedScore);
     } else {
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       audioManager.playError();
-      
-      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+
+      const newIncorrectIds = incorrectQuestionIds.includes(currentQ.id)
+        ? incorrectQuestionIds
+        : [...incorrectQuestionIds, currentQ.id];
+      setIncorrectQuestionIds(newIncorrectIds);
       addIncorrectAnswer({
         questionId: currentQ.id,
         levelId,
@@ -124,13 +244,18 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         explanation: currentQ.explanation,
         timestamp: Date.now(),
       });
-      
+
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
-    }
 
-    moveToNextQuestion(correct);
+      if (newLives <= 0) {
+        setTimeout(() => concludeGame(score, newIncorrectIds, "fail"), 1500);
+        return;
+      }
+
+      moveToNextQuestion(false, score, newIncorrectIds);
+    }
   };
 
   const handleWordClick = (word: string) => {
@@ -150,18 +275,25 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     const correct = JSON.stringify(selectedWords) === JSON.stringify(currentQ.correctOrder);
     setIsCorrect(correct);
     setShowFeedback(true);
+    recordAttempt(currentQ.id);
 
     if (correct) {
-      setScore(score + 1);
+      const updatedScore = score + 1;
+      setScore(updatedScore);
       audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
+      moveToNextQuestion(true, updatedScore);
     } else {
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       audioManager.playError();
-      
-      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+
+      const newIncorrectIds = incorrectQuestionIds.includes(currentQ.id)
+        ? incorrectQuestionIds
+        : [...incorrectQuestionIds, currentQ.id];
+      setIncorrectQuestionIds(newIncorrectIds);
       addIncorrectAnswer({
         questionId: currentQ.id,
         levelId,
@@ -171,13 +303,18 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         explanation: currentQ.explanation,
         timestamp: Date.now(),
       });
-      
+
       toast.error("❌ Not quite!", {
         description: `The correct order is: ${currentQ.correctOrder?.join(" ")}`,
       });
-    }
 
-    moveToNextQuestion(correct);
+      if (newLives <= 0) {
+        setTimeout(() => concludeGame(score, newIncorrectIds, "fail"), 1500);
+        return;
+      }
+
+      moveToNextQuestion(false, score, newIncorrectIds);
+    }
   };
 
   const handleTrueFalseClick = (answerIndex: number) => {
@@ -188,18 +325,25 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     const correct = answerIndex === currentQ.correctAnswer;
     setIsCorrect(correct);
     setShowFeedback(true);
+    recordAttempt(currentQ.id);
 
     if (correct) {
-      setScore(score + 1);
+      const updatedScore = score + 1;
+      setScore(updatedScore);
       audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
+      moveToNextQuestion(true, updatedScore);
     } else {
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       audioManager.playError();
-      
-      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+
+      const newIncorrectIds = incorrectQuestionIds.includes(currentQ.id)
+        ? incorrectQuestionIds
+        : [...incorrectQuestionIds, currentQ.id];
+      setIncorrectQuestionIds(newIncorrectIds);
       addIncorrectAnswer({
         questionId: currentQ.id,
         levelId,
@@ -209,13 +353,18 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         explanation: currentQ.explanation,
         timestamp: Date.now(),
       });
-      
+
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
-    }
 
-    moveToNextQuestion(correct);
+      if (newLives <= 0) {
+        setTimeout(() => concludeGame(score, newIncorrectIds, "fail"), 1500);
+        return;
+      }
+
+      moveToNextQuestion(false, score, newIncorrectIds);
+    }
   };
 
   const handleMatchingSelect = (item: string, side: "left" | "right") => {
@@ -250,24 +399,32 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     const userAnswers = matchingPairs
       .filter((pair) => pair.left && pair.right)
       .map((pair) => `${pair.left}-${pair.right}`);
-    
+
     const correctAnswers = currentQ.correctAnswer as string[];
-    const correct = JSON.stringify(userAnswers.sort()) === JSON.stringify(correctAnswers.sort());
+    const correct =
+      JSON.stringify([...userAnswers].sort()) === JSON.stringify([...(correctAnswers || [])].sort());
 
     setIsCorrect(correct);
     setShowFeedback(true);
+    recordAttempt(currentQ.id);
 
     if (correct) {
-      setScore(score + 1);
+      const updatedScore = score + 1;
+      setScore(updatedScore);
       audioManager.playSuccess();
       toast.success("🎉 Correct!", {
         description: currentQ.explanation,
       });
+      moveToNextQuestion(true, updatedScore);
     } else {
-      setLives(lives - 1);
+      const newLives = lives - 1;
+      setLives(newLives);
       audioManager.playError();
-      
-      setIncorrectQuestionIds([...incorrectQuestionIds, currentQ.id]);
+
+      const newIncorrectIds = incorrectQuestionIds.includes(currentQ.id)
+        ? incorrectQuestionIds
+        : [...incorrectQuestionIds, currentQ.id];
+      setIncorrectQuestionIds(newIncorrectIds);
       addIncorrectAnswer({
         questionId: currentQ.id,
         levelId,
@@ -277,13 +434,18 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         explanation: currentQ.explanation,
         timestamp: Date.now(),
       });
-      
+
       toast.error("❌ Not quite!", {
         description: currentQ.explanation,
       });
-    }
 
-    moveToNextQuestion(correct);
+      if (newLives <= 0) {
+        setTimeout(() => concludeGame(score, newIncorrectIds, "fail"), 1500);
+        return;
+      }
+
+      moveToNextQuestion(false, score, newIncorrectIds);
+    }
   };
 
   const handleMatchingReset = () => {
@@ -291,7 +453,52 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     setMatchingPairs([]);
   };
 
-  const moveToNextQuestion = (correct: boolean) => {
+  const concludeGame = (
+    finalScore: number,
+    incorrectIds: number[],
+    outcome: "success" | "fail"
+  ) => {
+    const totalQuestions = questions.length || MAX_SESSION_QUESTIONS;
+    const isPerfect = outcome === "success" && finalScore === totalQuestions && totalQuestions > 0;
+
+    updateLevelProgress({
+      levelId,
+      score: finalScore,
+      totalQuestions,
+      incorrectQuestionIds: incorrectIds,
+      askedQuestionIds: isPerfect ? [] : attemptedQuestionIds,
+      resetAskedQuestions: isPerfect,
+    });
+
+    audioManager.stopSpeaking();
+
+    if (isPerfect) {
+      audioManager.playLevelComplete();
+      toast.success("🌟 Perfect round!", {
+        description: "Starting a new set of questions!",
+      });
+      setTimeout(() => initializeSession(true), 1500);
+      return;
+    }
+
+    if (outcome === "success") {
+      audioManager.playLevelComplete();
+      toast.success(`🏆 Level Complete! Score: ${finalScore}/${totalQuestions}`);
+    } else {
+      audioManager.playError();
+      toast.error("💔 You're out of hearts!", {
+        description: `Final score: ${finalScore}/${totalQuestions}`,
+      });
+    }
+
+    setTimeout(() => onBack(), 2000);
+  };
+
+  const moveToNextQuestion = (
+    correct: boolean,
+    updatedScore: number,
+    updatedIncorrectIds = incorrectQuestionIds
+  ) => {
     setTimeout(() => {
       if (currentQuestion < questions.length - 1) {
         setCurrentQuestion(currentQuestion + 1);
@@ -301,12 +508,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
         setGapAnswer("");
         setMatchingPairs([]);
       } else {
-        const finalScore = score + (correct ? 1 : 0);
-        updateLevelProgress(levelId, finalScore, questions.length, incorrectQuestionIds);
-        audioManager.playLevelComplete();
-        audioManager.stopSpeaking();
-        toast.success(`🏆 Level Complete! Score: ${finalScore}/${questions.length}`);
-        setTimeout(() => onBack(), 2000);
+        concludeGame(updatedScore, updatedIncorrectIds, "success");
       }
     }, 2000);
   };
@@ -360,7 +562,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
               <div className="mt-2 h-3 w-full overflow-hidden rounded-full border border-border/70">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-primary to-secondary transition-all duration-500"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${progressValue}%` }}
                 />
               </div>
             </div>

@@ -1,6 +1,13 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, BookOpen, CheckCircle, XCircle, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  BookOpen,
+  CheckCircle,
+  XCircle,
+  Sparkles,
+  RotateCcw,
+} from "lucide-react";
 import { useProgress, IncorrectAnswer } from "@/hooks/useProgress";
 import { getLevelById, Question } from "@/data/levels";
 import { audioManager } from "@/utils/audio";
@@ -13,18 +20,21 @@ interface ReviewModeProps {
 }
 
 const ReviewMode = ({ onBack }: ReviewModeProps) => {
-  const { getIncorrectAnswers, removeIncorrectAnswer, clearIncorrectAnswers } = useProgress();
+  const { incorrectAnswers, removeIncorrectAnswer } = useProgress();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [gapAnswer, setGapAnswer] = useState("");
+  const [selectedWords, setSelectedWords] = useState<string[]>([]);
+  const [matchingPairs, setMatchingPairs] = useState<
+    { left: string | null; right: string | null }[]
+  >([]);
   const [reviewQuestions, setReviewQuestions] = useState<
     Array<{ question: Question; incorrectAnswer: IncorrectAnswer }>
   >([]);
 
   useEffect(() => {
-    const incorrectAnswers = getIncorrectAnswers();
     const questions: Array<{ question: Question; incorrectAnswer: IncorrectAnswer }> = [];
-
     incorrectAnswers.forEach((incorrect) => {
       const level = getLevelById(incorrect.levelId);
       if (level) {
@@ -36,7 +46,26 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
     });
 
     setReviewQuestions(questions);
-  }, []);
+  }, [incorrectAnswers]);
+
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setShowFeedback(false);
+    setGapAnswer("");
+    setSelectedWords([]);
+    setMatchingPairs([]);
+  }, [currentIndex, reviewQuestions.length]);
+
+  useEffect(() => {
+    if (reviewQuestions.length === 0) {
+      setCurrentIndex(0);
+      return;
+    }
+
+    if (currentIndex > reviewQuestions.length - 1) {
+      setCurrentIndex(reviewQuestions.length - 1);
+    }
+  }, [reviewQuestions.length, currentIndex]);
 
   if (reviewQuestions.length === 0) {
     return (
@@ -59,6 +88,37 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
   const currentReview = reviewQuestions[currentIndex];
   const currentQ = currentReview.question;
 
+  const handleCorrect = () => {
+    audioManager.playSuccess();
+    toast.success("🎉 Correct! Well done!", {
+      description: "You've mastered this question!",
+    });
+    removeIncorrectAnswer(currentQ.id, currentReview.incorrectAnswer.levelId);
+
+    setTimeout(() => {
+      if (currentIndex < reviewQuestions.length - 1) {
+        setCurrentIndex((prev) => prev + 1);
+      } else {
+        toast.success("🏆 Review Complete!");
+        setTimeout(() => onBack(), 1500);
+      }
+    }, 1500);
+  };
+
+  const handleIncorrect = (message?: string) => {
+    audioManager.playError();
+    toast.error("❌ Not quite!", {
+      description: message || currentQ.explanation,
+    });
+    setTimeout(() => {
+      setSelectedAnswer(null);
+      setShowFeedback(false);
+      setGapAnswer("");
+      setSelectedWords([]);
+      setMatchingPairs([]);
+    }, 1200);
+  };
+
   const handleAnswerClick = (answerIndex: number) => {
     if (showFeedback) return;
 
@@ -68,35 +128,100 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
     setShowFeedback(true);
 
     if (correct) {
-      audioManager.playSuccess();
-      toast.success("🎉 Correct! Well done!", {
-        description: "You've mastered this question!",
-      });
-      
-      // Remove from incorrect answers
-      removeIncorrectAnswer(currentQ.id, currentReview.incorrectAnswer.levelId);
-      
-      setTimeout(() => {
-        if (currentIndex < reviewQuestions.length - 1) {
-          setCurrentIndex(currentIndex + 1);
-          setSelectedAnswer(null);
-          setShowFeedback(false);
-        } else {
-          toast.success("🏆 Review Complete!");
-          setTimeout(() => onBack(), 1500);
-        }
-      }, 2000);
+      handleCorrect();
     } else {
-      audioManager.playError();
-      toast.error("❌ Not quite!", {
-        description: currentQ.explanation,
-      });
-      
-      setTimeout(() => {
-        setSelectedAnswer(null);
-        setShowFeedback(false);
-      }, 2000);
+      handleIncorrect();
     }
+  };
+
+  const handleGapFillSubmit = () => {
+    if (showFeedback || !gapAnswer) return;
+    audioManager.playClick();
+    const correct =
+      gapAnswer.toLowerCase().trim() ===
+      (currentQ.correctAnswer as string).toLowerCase().trim();
+    setShowFeedback(true);
+    if (correct) {
+      handleCorrect();
+    } else {
+      handleIncorrect();
+    }
+  };
+
+  const handleWordClick = (word: string) => {
+    if (showFeedback) return;
+    setSelectedWords((prev) => [...prev, word]);
+  };
+
+  const handleRemoveWord = (index: number) => {
+    if (showFeedback) return;
+    setSelectedWords((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleReorderSubmit = () => {
+    if (showFeedback || selectedWords.length !== currentQ.options.length) return;
+    audioManager.playClick();
+    const correct =
+      JSON.stringify(selectedWords) === JSON.stringify(currentQ.correctOrder);
+    setShowFeedback(true);
+    if (correct) {
+      handleCorrect();
+    } else {
+      handleIncorrect(
+        `The correct order is: ${currentQ.correctOrder?.join(" ")}`
+      );
+    }
+  };
+
+  const handleMatchingSelect = (item: string, side: "left" | "right") => {
+    if (showFeedback) return;
+
+    setMatchingPairs((prev) => {
+      const pairs = [...prev];
+      const emptyIndex = pairs.findIndex((pair) =>
+        side === "left" ? pair.left === null : pair.right === null
+      );
+
+      if (emptyIndex !== -1) {
+        if (side === "left") {
+          pairs[emptyIndex].left = item;
+        } else {
+          pairs[emptyIndex].right = item;
+        }
+      } else {
+        pairs.push({
+          left: side === "left" ? item : null,
+          right: side === "right" ? item : null,
+        });
+      }
+
+      return pairs;
+    });
+  };
+
+  const handleMatchingSubmit = () => {
+    if (showFeedback || matchingPairs.length === 0) return;
+    const userAnswers = matchingPairs
+      .filter((pair) => pair.left && pair.right)
+      .map((pair) => `${pair.left}-${pair.right}`);
+
+    const correctAnswers = currentQ.correctAnswer as string[];
+    const correct =
+      JSON.stringify(userAnswers.slice().sort()) ===
+      JSON.stringify([...correctAnswers].sort());
+
+    setShowFeedback(true);
+    if (correct) {
+      handleCorrect();
+    } else {
+      handleIncorrect();
+    }
+  };
+
+  const handleMatchingReset = () => {
+    if (showFeedback) return;
+    audioManager.playClick();
+    setMatchingPairs([]);
   };
 
   const handleSpeak = () => {
@@ -154,7 +279,7 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
           </div>
         </SectionCard>
 
-        {currentQ.type === "multiple-choice" ? (
+        {currentQ.type === "multiple-choice" || currentQ.type === "true-false" ? (
           <SectionCard
             title="Try again"
             description="Answers stay spaced so tiny fingers can tap confidently."
@@ -181,14 +306,178 @@ const ReviewMode = ({ onBack }: ReviewModeProps) => {
             </div>
           </SectionCard>
         ) : (
-          <SectionCard
-            title="Replay suggestion"
-            description="This question type is best practiced inside its level."
-          >
-            <p className="text-sm text-muted-foreground">
-              Head back to the level to retry this interactive question type.
-            </p>
-          </SectionCard>
+          <>
+            {currentQ.type === "gap-fill" && (
+              <SectionCard
+                title="Try again"
+                description="Tap the best word, then check your answer."
+              >
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                    {currentQ.options.map((option, index) => (
+                      <Button
+                        key={index}
+                        onClick={() => setGapAnswer(option)}
+                        disabled={showFeedback}
+                        variant={gapAnswer === option ? "default" : "outline"}
+                        className={`rounded-3xl border-3 px-4 py-4 text-lg font-black ${
+                          showFeedback && option === currentQ.correctAnswer
+                            ? "bg-success text-success-foreground border-success"
+                            : ""
+                        }`}
+                      >
+                        {option}
+                      </Button>
+                    ))}
+                  </div>
+                  <Button
+                    onClick={handleGapFillSubmit}
+                    disabled={!gapAnswer || showFeedback}
+                    className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
+                  >
+                    Check answer
+                  </Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {currentQ.type === "sentence-reorder" && (
+              <SectionCard
+                title="Try again"
+                description="Tap each word to rebuild the sentence."
+              >
+                <div className="space-y-4">
+                  {selectedWords.length > 0 && (
+                    <div className="flex flex-wrap justify-center gap-2 rounded-3xl border border-dashed border-border/70 bg-muted/40 p-3">
+                      {selectedWords.map((word, index) => (
+                        <Button
+                          key={`selected-${index}`}
+                          onClick={() => handleRemoveWord(index)}
+                          size="sm"
+                          variant="secondary"
+                          className="rounded-full border-2 border-secondary px-3 py-1 text-lg font-black"
+                        >
+                          {word}
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {currentQ.options
+                      .filter((word) => !selectedWords.includes(word))
+                      .map((option, index) => (
+                        <Button
+                          key={index}
+                          onClick={() => handleWordClick(option)}
+                          disabled={showFeedback}
+                          variant="outline"
+                          className="rounded-full border-3 border-border px-4 py-3 text-lg font-black"
+                        >
+                          {option}
+                        </Button>
+                      ))}
+                  </div>
+                  <Button
+                    onClick={handleReorderSubmit}
+                    disabled={
+                      selectedWords.length !== currentQ.options.length || showFeedback
+                    }
+                    className="w-full rounded-3xl border-3 border-primary py-4 text-lg font-black"
+                  >
+                    Check order
+                  </Button>
+                </div>
+              </SectionCard>
+            )}
+
+            {currentQ.type === "matching" && (
+              <SectionCard
+                title="Try again"
+                description="Match each pair to nail the concept."
+              >
+                <div className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="space-y-2">
+                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                        Left side
+                      </p>
+                      {currentQ.pairs?.map((pair, index) => (
+                        <Button
+                          key={`left-${index}`}
+                          onClick={() => handleMatchingSelect(pair.left, "left")}
+                          disabled={
+                            showFeedback ||
+                            matchingPairs.some((p) => p.left === pair.left)
+                          }
+                          variant={
+                            matchingPairs.some((p) => p.left === pair.left)
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="w-full rounded-3xl border-3 border-border px-4 py-3 text-base font-black"
+                        >
+                          {pair.left}
+                        </Button>
+                      ))}
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
+                        Right side
+                      </p>
+                      {currentQ.pairs?.map((pair, index) => (
+                        <Button
+                          key={`right-${index}`}
+                          onClick={() => handleMatchingSelect(pair.right, "right")}
+                          disabled={
+                            showFeedback ||
+                            matchingPairs.some((p) => p.right === pair.right)
+                          }
+                          variant={
+                            matchingPairs.some((p) => p.right === pair.right)
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="w-full rounded-3xl border-3 border-border px-4 py-3 text-base font-black"
+                        >
+                          {pair.right}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                  {matchingPairs.length > 0 && (
+                    <div className="rounded-3xl border border-dashed border-border/80 bg-muted/50 p-4 text-sm font-semibold text-muted-foreground">
+                      <p className="mb-2 text-xs font-black uppercase tracking-widest">
+                        Your matches
+                      </p>
+                      {matchingPairs.map((pair, index) => (
+                        <div key={`pair-${index}`}>
+                          {pair.left} → {pair.right}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      onClick={handleMatchingReset}
+                      variant="outline"
+                      disabled={showFeedback || matchingPairs.length === 0}
+                      className="flex-1 rounded-3xl border-3 border-border py-4 text-lg font-black"
+                    >
+                      <RotateCcw className="mr-2 h-5 w-5" />
+                      Reset
+                    </Button>
+                    <Button
+                      onClick={handleMatchingSubmit}
+                      disabled={showFeedback || matchingPairs.length === 0}
+                      className="flex-1 rounded-3xl border-3 border-primary py-4 text-lg font-black"
+                    >
+                      Check matches
+                    </Button>
+                  </div>
+                </div>
+              </SectionCard>
+            )}
+          </>
         )}
       </div>
     </div>

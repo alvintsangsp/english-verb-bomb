@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface IncorrectAnswer {
   questionId: number;
@@ -16,6 +16,7 @@ export interface LevelProgress {
   stars: number;
   bestScore: number;
   incorrectAnswers?: number[]; // Array of question IDs answered incorrectly
+  askedQuestions?: number[];
 }
 
 interface ProgressState {
@@ -24,32 +25,40 @@ interface ProgressState {
 
 const STORAGE_KEY = "english-verb-bomb-progress";
 const INCORRECT_ANSWERS_KEY = "english-verb-bomb-incorrect-answers";
+const LAST_PLAYED_LEVEL_KEY = "english-verb-bomb-last-level";
+
+const isBrowser = typeof window !== "undefined";
+
+const readJSON = <T,>(key: string, fallback: T): T => {
+  if (!isBrowser) return fallback;
+  const raw = localStorage.getItem(key);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error(`Failed to parse localStorage key "${key}"`, error);
+    return fallback;
+  }
+};
+
+const readNumber = (key: string): number | null => {
+  if (!isBrowser) return null;
+  const raw = localStorage.getItem(key);
+  if (!raw) return null;
+  const parsed = Number(raw);
+  return Number.isNaN(parsed) ? null : parsed;
+};
 
 export const useProgress = () => {
-  const [progress, setProgress] = useState<ProgressState>({});
-  const [incorrectAnswers, setIncorrectAnswers] = useState<IncorrectAnswer[]>([]);
-
-  // Load progress from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    const savedIncorrect = localStorage.getItem(INCORRECT_ANSWERS_KEY);
-    
-    if (saved) {
-      try {
-        setProgress(JSON.parse(saved));
-      } catch (e) {
-        console.error("Failed to load progress:", e);
-      }
-    }
-    
-    if (savedIncorrect) {
-      try {
-        setIncorrectAnswers(JSON.parse(savedIncorrect));
-      } catch (e) {
-        console.error("Failed to load incorrect answers:", e);
-      }
-    }
-  }, []);
+  const [progress, setProgress] = useState<ProgressState>(() =>
+    readJSON(STORAGE_KEY, {})
+  );
+  const [incorrectAnswers, setIncorrectAnswers] = useState<IncorrectAnswer[]>(() =>
+    readJSON(INCORRECT_ANSWERS_KEY, [])
+  );
+  const [lastPlayedLevel, setLastPlayedLevel] = useState<number | null>(() =>
+    readNumber(LAST_PLAYED_LEVEL_KEY)
+  );
 
   // Save progress to localStorage
   const saveProgress = (newProgress: ProgressState) => {
@@ -58,14 +67,29 @@ export const useProgress = () => {
   };
 
   // Update progress for a level
-  const updateLevelProgress = (
-    levelId: number, 
-    score: number, 
-    totalQuestions: number, 
-    incorrectQuestionIds?: number[]
-  ) => {
+  interface UpdateLevelProgressArgs {
+    levelId: number;
+    score: number;
+    totalQuestions: number;
+    incorrectQuestionIds?: number[];
+    askedQuestionIds?: number[];
+    resetAskedQuestions?: boolean;
+  }
+
+  const updateLevelProgress = ({
+    levelId,
+    score,
+    totalQuestions,
+    incorrectQuestionIds = [],
+    askedQuestionIds = [],
+    resetAskedQuestions = false,
+  }: UpdateLevelProgressArgs) => {
     const stars = calculateStars(score, totalQuestions);
     const existingProgress = progress[levelId];
+    const existingAsked = existingProgress?.askedQuestions || [];
+    const askedSet = new Set(
+      resetAskedQuestions ? askedQuestionIds : [...existingAsked, ...askedQuestionIds]
+    );
     
     const newLevelProgress: LevelProgress = {
       levelId,
@@ -73,6 +97,7 @@ export const useProgress = () => {
       stars: Math.max(stars, existingProgress?.stars || 0),
       bestScore: Math.max(score, existingProgress?.bestScore || 0),
       incorrectAnswers: incorrectQuestionIds || [],
+      askedQuestions: Array.from(askedSet),
     };
 
     saveProgress({
@@ -110,6 +135,13 @@ export const useProgress = () => {
     localStorage.removeItem(INCORRECT_ANSWERS_KEY);
   };
 
+  const saveLastPlayedLevel = useCallback((levelId: number) => {
+    setLastPlayedLevel(levelId);
+    if (isBrowser) {
+      localStorage.setItem(LAST_PLAYED_LEVEL_KEY, String(levelId));
+    }
+  }, []);
+
   // Check if a level is unlocked
   const isLevelUnlocked = (levelId: number, unlockRequirement?: number): boolean => {
     if (!unlockRequirement) return true;
@@ -133,10 +165,16 @@ export const useProgress = () => {
   // Reset all progress
   const resetProgress = () => {
     saveProgress({});
+    setLastPlayedLevel(null);
+    if (isBrowser) {
+      localStorage.removeItem(LAST_PLAYED_LEVEL_KEY);
+    }
   };
 
   return {
     progress,
+    incorrectAnswers,
+    lastPlayedLevel,
     updateLevelProgress,
     isLevelUnlocked,
     getLevelProgress,
@@ -145,5 +183,6 @@ export const useProgress = () => {
     getIncorrectAnswers,
     removeIncorrectAnswer,
     clearIncorrectAnswers,
+    saveLastPlayedLevel,
   };
 };

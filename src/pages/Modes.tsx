@@ -5,15 +5,27 @@ import SectionCard from "@/components/SectionCard";
 import GlassPanel from "@/components/GlassPanel";
 import { gameModes } from "@/data/modes";
 import { Sparkles } from "lucide-react";
+import { useProgress } from "@/hooks/useProgress";
+import { getLevelById } from "@/data/levels";
 
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Game Modes", to: "/modes" },
+  { label: "Lesson Time", to: "/tutorial" },
   { label: "Review Lab", to: "/review" },
 ];
 
 const Modes = () => {
   const navigate = useNavigate();
+  const { lastPlayedLevel } = useProgress();
+
+  const handlePlayClick = () => {
+    if (lastPlayedLevel && getLevelById(lastPlayedLevel)) {
+      navigate(`/play/${lastPlayedLevel}`);
+    } else {
+      navigate("/modes");
+    }
+  };
 
   return (
     <AppShell
@@ -21,6 +33,7 @@ const Modes = () => {
       subtitle="Each mode focuses on a specific tense so practice stays clear and comfy."
       badge="Choose your adventure"
       navItems={navItems}
+      onPlayClick={handlePlayClick}
       actions={
         <Button size="sm" className="rounded-full font-black" onClick={() => navigate("/")}>
           Back Home

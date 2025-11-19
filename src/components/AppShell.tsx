@@ -5,6 +5,7 @@ import { NavLink } from "@/components/NavLink";
 import GlassPanel from "@/components/GlassPanel";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useNavigate } from "react-router-dom";
 
 interface NavItem {
   label: string;
@@ -21,6 +22,9 @@ interface AppShellProps {
   actions?: ReactNode;
   children: ReactNode;
   className?: string;
+  onPlayClick?: () => void;
+  onReviewClick?: () => void;
+  hideHeroButtons?: boolean;
 }
 
 const AppShell = ({
@@ -32,7 +36,12 @@ const AppShell = ({
   actions,
   children,
   className,
+  onPlayClick,
+  onReviewClick,
+  hideHeroButtons = false,
 }: AppShellProps) => {
+  const navigate = useNavigate();
+
   const handleShare = async () => {
     const shareData = {
       title: "English Verb Bomb",
@@ -110,18 +119,26 @@ const AppShell = ({
                 <h1 className="text-3xl font-black text-foreground sm:text-4xl md:text-5xl">{title}</h1>
                 {subtitle && <p className="mt-2 text-base text-muted-foreground sm:text-lg">{subtitle}</p>}
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button size="sm" variant="secondary" className="rounded-full font-black uppercase tracking-wide">
-                  Play & Learn
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="rounded-full border-2 border-dashed border-primary/50 font-black text-primary"
-                >
-                  Practice Hub
-                </Button>
-              </div>
+              {!hideHeroButtons && (
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="rounded-full font-black uppercase tracking-wide"
+                    onClick={() => (onPlayClick ? onPlayClick() : navigate("/modes"))}
+                  >
+                    Play & Learn
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="rounded-full border-2 border-dashed border-primary/50 font-black text-primary"
+                    onClick={() => (onReviewClick ? onReviewClick() : navigate("/review"))}
+                  >
+                    Review Lab
+                  </Button>
+                </div>
+              )}
             </div>
             {heroIllustration && (
               <div className="relative flex w-full max-w-sm justify-center">

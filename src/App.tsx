@@ -9,6 +9,7 @@ import Levels from "./pages/Levels";
 import Play from "./pages/Play";
 import Review from "./pages/Review";
 import NotFound from "./pages/NotFound";
+import Tutorial from "./pages/Tutorial";
 import ScrollToTop from "./components/ScrollToTop";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/levels/:modeId" element={<Levels />} />
           <Route path="/play/:levelId" element={<Play />} />
           <Route path="/review" element={<Review />} />
+          <Route path="/tutorial" element={<Tutorial />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

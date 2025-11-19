@@ -7,18 +7,20 @@ import SectionCard from "@/components/SectionCard";
 import GlassPanel from "@/components/GlassPanel";
 import { useProgress } from "@/hooks/useProgress";
 import { gameModes } from "@/data/modes";
+import { getLevelById } from "@/data/levels";
 
 const navItems = [
   { label: "Home", to: "/" },
   { label: "Game Modes", to: "/modes" },
+  { label: "Lesson Time", to: "/tutorial" },
   { label: "Review Lab", to: "/review" },
 ];
 
 const Index = () => {
   const navigate = useNavigate();
-  const { progress, getIncorrectAnswers } = useProgress();
+  const { progress, incorrectAnswers, lastPlayedLevel } = useProgress();
 
-  const incorrectAnswersCount = getIncorrectAnswers().length;
+  const incorrectAnswersCount = incorrectAnswers.length;
   const stats = useMemo(() => {
     const entries = Object.values(progress || {});
     const completedLevels = entries.filter((entry) => entry.completed).length;
@@ -28,12 +30,21 @@ const Index = () => {
     return { completedLevels, totalStars, bestScore };
   }, [progress]);
 
+  const handlePlayClick = () => {
+    if (lastPlayedLevel && getLevelById(lastPlayedLevel)) {
+      navigate(`/play/${lastPlayedLevel}`);
+    } else {
+      navigate("/modes");
+    }
+  };
+
   return (
     <AppShell
       title="Blast through verbs the playful way!"
       subtitle="Play mini-challenges, earn stars, and master every tense with sparkly feedback."
       badge="New modes + review lab"
       navItems={navItems}
+      onPlayClick={handlePlayClick}
       actions={
         <Button size="sm" className="rounded-full font-black" onClick={() => navigate("/modes")}>
           Start playing
