@@ -1,11 +1,12 @@
 import { ReactNode } from "react";
-import { Sparkles, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavLink } from "@/components/NavLink";
 import GlassPanel from "@/components/GlassPanel";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import logo from "@/assets/logo.png";
 
 interface NavItem {
   label: string;
@@ -73,7 +74,7 @@ const AppShell = ({
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/90 pb-[env(safe-area-inset-top,0px)] backdrop-blur-xl">
         <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-3 py-4 sm:px-4">
           <div className="flex items-center gap-2 font-black text-lg text-primary md:text-xl">
-            <Sparkles className="h-6 w-6 text-secondary" />
+            <img src={logo} alt="English Verb Bomb" className="h-8 w-8 object-contain" />
             English Verb Bomb
           </div>
           <div className="flex items-center gap-2">
