@@ -52,7 +52,7 @@ const Modes = () => {
               className="rounded-[calc(var(--radius)+0.5rem)] border-[3px] border-border/70 bg-card p-5 shadow-lg"
             >
               <div className="flex flex-col gap-3">
-                <div className={`rounded-[1.5rem] bg-gradient-to-br ${mode.gradient} p-5 text-5xl shadow-inner`}>
+                <div className={`rounded-[1.5rem] bg-gradient-to-br ${mode.gradient} p-5 text-4xl shadow-inner`}>
                   {mode.icon}
                 </div>
                 <div>
