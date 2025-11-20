@@ -69,7 +69,7 @@ const Index = () => {
               className="group flex flex-col gap-3 rounded-[calc(var(--radius)+0.5rem)] border-[3px] border-border/70 bg-card/90 p-5 text-left shadow hover:-translate-y-1 hover:border-primary/70 transition"
             >
               <div
-                className={`rounded-[1.75rem] bg-gradient-to-br ${mode.gradient} text-5xl p-4 text-center`}
+                className="flex items-center justify-center text-6xl"
                 aria-hidden
               >
                 {mode.icon}

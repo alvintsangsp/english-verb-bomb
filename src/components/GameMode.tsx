@@ -46,7 +46,7 @@ const GameMode = ({ mode, onBack, onSelectLevel }: GameModeProps) => {
               </p>
             </div>
             {modeInfo?.icon && (
-              <div className="rounded-[2.5rem] bg-white/80 p-6 text-5xl shadow-inner">{modeInfo.icon}</div>
+              <div className="flex items-center justify-center text-6xl">{modeInfo.icon}</div>
             )}
           </div>
         </GlassPanel>
