@@ -1,12 +1,19 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Heart, Star, Sparkles, Volume2, RotateCcw } from "lucide-react";
+import { ArrowLeft, Heart, Star, Sparkles, Volume2, RotateCcw, Gauge } from "lucide-react";
 import { toast } from "sonner";
 import { getLevelById, Question } from "@/data/levels";
 import { useProgress } from "@/hooks/useProgress";
 import { audioManager } from "@/utils/audio";
 import GlassPanel from "@/components/GlassPanel";
 import SectionCard from "@/components/SectionCard";
+
+type SpeechRate = "slow" | "normal" | "fast";
+const SPEECH_RATES: Record<SpeechRate, { label: string; rate: number }> = {
+  slow: { label: "0.5x", rate: 0.6 },
+  normal: { label: "1x", rate: 0.9 },
+  fast: { label: "1.5x", rate: 1.3 },
+};
 
 interface GamePlayProps {
   levelId: number;
@@ -38,6 +45,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [attemptedQuestionIds, setAttemptedQuestionIds] = useState<number[]>([]);
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speechRate, setSpeechRate] = useState<SpeechRate>("normal");
   const {
     progress,
     incorrectAnswers,
@@ -528,7 +536,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
       const cleanText = currentQ.sentence.replace(/_{2,}/g, '').replace(/\s+/g, ' ').trim();
       const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'en-US';
-      utterance.rate = 0.9;
+      utterance.rate = SPEECH_RATES[speechRate].rate;
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
       window.speechSynthesis.cancel();
@@ -585,15 +593,32 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
                 />
               </div>
             </div>
-            <Button 
-              onClick={handleSpeak} 
-              variant={isSpeaking ? "default" : "secondary"} 
-              size="sm" 
-              className={`rounded-full font-black transition-all ${isSpeaking ? "animate-pulse" : ""}`}
-            >
-              <Volume2 className={`mr-2 h-4 w-4 ${isSpeaking ? "animate-bounce" : ""}`} />
-              {isSpeaking ? "Stop" : "Listen"}
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-full border border-border/70 bg-muted/50 p-0.5">
+                {(Object.keys(SPEECH_RATES) as SpeechRate[]).map((rate) => (
+                  <button
+                    key={rate}
+                    onClick={() => setSpeechRate(rate)}
+                    className={`px-2 py-1 text-xs font-bold rounded-full transition-all ${
+                      speechRate === rate
+                        ? "bg-secondary text-secondary-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {SPEECH_RATES[rate].label}
+                  </button>
+                ))}
+              </div>
+              <Button 
+                onClick={handleSpeak} 
+                variant={isSpeaking ? "default" : "secondary"} 
+                size="sm" 
+                className={`rounded-full font-black transition-all ${isSpeaking ? "animate-pulse" : ""}`}
+              >
+                <Volume2 className={`mr-2 h-4 w-4 ${isSpeaking ? "animate-bounce" : ""}`} />
+                {isSpeaking ? "Stop" : "Listen"}
+              </Button>
+            </div>
           </div>
           <div className="text-center">
             <div className="mb-4 flex justify-center">
