@@ -524,7 +524,9 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
     setIsSpeaking(true);
     
     if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(currentQ.sentence);
+      // Remove underscore placeholders from the text before speaking
+      const cleanText = currentQ.sentence.replace(/_{2,}/g, '').replace(/\s+/g, ' ').trim();
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       utterance.lang = 'en-US';
       utterance.rate = 0.9;
       utterance.onend = () => setIsSpeaking(false);
