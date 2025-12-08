@@ -63,11 +63,11 @@ class AudioManager {
 
   // Text-to-Speech for questions
   speakText(text: string, lang: string = 'en-US') {
-    if (this.isSpeaking) {
-      window.speechSynthesis.cancel();
-    }
-
     if ('speechSynthesis' in window) {
+      // Always cancel any pending/current speech first
+      window.speechSynthesis.cancel();
+      this.isSpeaking = false;
+
       const utterance = new SpeechSynthesisUtterance(text);
       utterance.lang = lang;
       utterance.rate = 0.9;
