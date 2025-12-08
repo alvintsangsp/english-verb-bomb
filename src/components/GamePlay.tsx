@@ -37,6 +37,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   const [incorrectQuestionIds, setIncorrectQuestionIds] = useState<number[]>([]);
   const [attemptedQuestionIds, setAttemptedQuestionIds] = useState<number[]>([]);
   const [sessionQuestions, setSessionQuestions] = useState<Question[]>([]);
+  const [isSpeaking, setIsSpeaking] = useState(false);
   const {
     progress,
     incorrectAnswers,
@@ -132,6 +133,7 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
 
   useEffect(() => {
     audioManager.stopSpeaking();
+    setIsSpeaking(false);
   }, [currentQuestion]);
 
   if (questions.length === 0 || !currentQ) {
@@ -514,7 +516,22 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
   };
 
   const handleSpeak = () => {
-    audioManager.speakText(currentQ.sentence);
+    if (isSpeaking) {
+      audioManager.stopSpeaking();
+      setIsSpeaking(false);
+      return;
+    }
+    setIsSpeaking(true);
+    
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(currentQ.sentence);
+      utterance.lang = 'en-US';
+      utterance.rate = 0.9;
+      utterance.onend = () => setIsSpeaking(false);
+      utterance.onerror = () => setIsSpeaking(false);
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
+    }
   };
 
   return (
@@ -566,9 +583,14 @@ const GamePlay = ({ levelId, onBack }: GamePlayProps) => {
                 />
               </div>
             </div>
-            <Button onClick={handleSpeak} variant="secondary" size="sm" className="rounded-full font-black">
-              <Volume2 className="mr-2 h-4 w-4" />
-              Listen
+            <Button 
+              onClick={handleSpeak} 
+              variant={isSpeaking ? "default" : "secondary"} 
+              size="sm" 
+              className={`rounded-full font-black transition-all ${isSpeaking ? "animate-pulse" : ""}`}
+            >
+              <Volume2 className={`mr-2 h-4 w-4 ${isSpeaking ? "animate-bounce" : ""}`} />
+              {isSpeaking ? "Stop" : "Listen"}
             </Button>
           </div>
           <div className="text-center">
