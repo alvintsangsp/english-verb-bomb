@@ -21125,6 +21125,16 @@ export const levels: Level[] = [
   },
 ];
 
+import { additionalQuestions } from './additionalQuestions';
+
+// Merge additional questions into levels
+levels.forEach(level => {
+  const additional = additionalQuestions[level.id];
+  if (additional) {
+    level.questions = [...level.questions, ...additional];
+  }
+});
+
 export const getLevelsByMode = (mode: string): Level[] => {
   return levels.filter((level) => level.mode === mode);
 };
